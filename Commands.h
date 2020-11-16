@@ -12,12 +12,13 @@ using std::string;
 
 class Command {
 protected:
-    int pid;
-    int jobId;
-    string commandLine;
-    string arguments[20];
+    int pid = -1;
+    int jobId = -1;
+    string commandLine = "PLACEHOLDER";
+    string baseCommand = "BASE_PLACEHOLDER";
+    string arguments[20] = {""};
     bool stopped = false;
-    time_t startTime;
+    time_t startTime = time(nullptr);
 
 public:
     Command(const char *cmd_line);
@@ -69,7 +70,8 @@ public:
 };
 
 class ChangeDirCommand : public BuiltInCommand {
-// TODO: Add your data members public:
+// TODO: Add your data members
+public:
     ChangeDirCommand(const char *cmd_line, char **plastPwd);
 
     virtual ~ChangeDirCommand() {}
@@ -82,6 +84,15 @@ public:
     GetCurrDirCommand(const char *cmd_line);
 
     virtual ~GetCurrDirCommand() {}
+
+    void execute() override;
+};
+
+class ChangePromptCommand : public BuiltInCommand
+public:
+    ChangePromptCommand(const char *cmd_line);
+
+    virtual ~ChangePromptCommand() {}
 
     void execute() override;
 };
@@ -207,9 +218,11 @@ public:
 class SmallShell {
 private:
     // TODO: Add your data members
-    string prompt = "smash>";
+    string prompt = "smash> ";
 
     SmallShell();
+
+    int ProcessChangePromptCommand(const char *cmd_line);
 
 public:
     Command *CreateCommand(const char *cmd_line);
@@ -227,6 +240,8 @@ public:
 
     void executeCommand(const char *cmd_line);
     // TODO: add extra methods as needed
+
+    string GetPrompt();
 };
 
 #endif //SMASH_COMMAND_H_

@@ -93,6 +93,12 @@ SmallShell::~SmallShell() {
 * Creates and returns a pointer to Command class which matches the given command line (cmd_line)
 */
 Command *SmallShell::CreateCommand(const char *cmd_line) {
+    string command = string(cmd_line);
+    if (command.find("chprompt") == 0) {
+        ProcessChangePromptCommand(cmd_line);
+    } else if (command.find("showpid") == 0) {
+        return
+    }
     // For example:
 /*
   string cmd_s = string(cmd_line);
@@ -114,4 +120,18 @@ void SmallShell::executeCommand(const char *cmd_line) {
     // Command* cmd = CreateCommand(cmd_line);
     // cmd->execute();
     // Please note that you must fork smash process for some commands (e.g., external commands....)
+}
+
+string SmallShell::GetPrompt() {
+    return prompt;
+}
+
+ChangePromptCommand::ChangePromptCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+    string command = string(cmd_line);
+    string* splitCommand = SplitCommandLineByWhitespace(command);
+    if (splitCommand->length() == 0) {
+        prompt = "smash> ";
+    } else if (splitCommand->length() >= 2) {
+        prompt = splitCommand[1];
+    }
 }
