@@ -115,3 +115,21 @@ void SmallShell::executeCommand(const char *cmd_line) {
     // cmd->execute();
     // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
+
+vector<string> stringToWords (string s){
+    vector<string> result;
+    string word="";
+    for (auto x: s){
+        if(x ==' ' && word!=""){
+            result.push_back(word);
+            word="";
+        }
+        else{
+            word=word+x;
+        }
+    }
+    if(word!=""){
+        result.push_back(word);
+    }
+    return result;
+}
