@@ -135,3 +135,22 @@ ChangePromptCommand::ChangePromptCommand(const char *cmd_line) : BuiltInCommand(
         prompt = splitCommand[1];
     }
 }
+
+
+vector<string> stringToWords (string s){
+    vector<string> result;
+    string word="";
+    for (auto x: s){
+        if(x ==' ' && word!=""){
+            result.push_back(word);
+            word="";
+        }
+        else{
+            word=word+x;
+        }
+    }
+    if(word!=""){
+        result.push_back(word);
+    }
+    return result;
+}
