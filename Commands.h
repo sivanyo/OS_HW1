@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <time.h>
+#include <map>
 
 using std::string;
 #define COMMAND_ARGS_MAX_LENGTH (200)
@@ -143,7 +144,17 @@ public:
     void execute() override;
 };
 
+class Jobs{
+public:
+    int JobID;
+    pid_t pid;
+    string commandLine;
+    time_t arriveTime;
+    bool stopped = false;
+};
+
 class JobsList {
+    std::map<int, Jobs> jobsMap;
 public:
     class JobEntry {
         // TODO: Add your data members

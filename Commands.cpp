@@ -155,17 +155,7 @@ const string &SmallShell::getLastDir() const {
     return last_dir;
 }
 
-vector<string> stringToWords (string s){
-    vector<string> result;
-    string word="";
-    for (auto x: s){
-        if(x ==' ' && word!=""){
-            result.push_back(word);
-            word="";
-        }
-        else{
-            word=word+x;
-        }
+
 string SmallShell::GetPrompt() {
     return prompt;
 }
@@ -188,10 +178,12 @@ void ChangePromptCommand::execute() {
     }
 }
 
-ChangePromptCommand::ChangePromptCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+ChangePromptCommand::ChangePromptCommand(
+        const char *cmd_line) : BuiltInCommand(cmd_line) {
 }
 
-Command::Command(const char *cmd_line) {
+Command::Command(
+        const char *cmd_line) {
     commandLine = string(cmd_line);
     vector<string> split = Utils::stringToWords(commandLine);
     baseCommand = split[0];
@@ -201,7 +193,8 @@ Command::Command(const char *cmd_line) {
     return result;
 }
 
-BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {
+BuiltInCommand::BuiltInCommand(
+        const char *cmd_line) : Command(cmd_line) {
 
 }
 
@@ -210,7 +203,8 @@ void ShowPidCommand::execute() {
     cout << "smash pid is " << smashPid << endl;
 }
 
-ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+ShowPidCommand::ShowPidCommand(
+        const char *cmd_line) : BuiltInCommand(cmd_line) {
 
 }
 
@@ -225,18 +219,18 @@ void GetCurrDirCommand::execute() {
     delete currDirCommand;
 }
 
-GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+GetCurrDirCommand::GetCurrDirCommand(
+        const char *cmd_line) : BuiltInCommand(cmd_line) {
 
 }
 
 void ChangeDirCommand::execute() {
     string prev_dir = smash.getLastDir();
     string curr_dir = "";
-    if (arguments.size() > 1){
+    if (arguments.size() > 1) {
         // more there one parameter passed
         cout << "smash error: cd: too many arguments" << endl;
-    }
-    else if(arguments[0] == "-") {
+    } else if (arguments[0] == "-") {
         // need to go back to prev dir
         if (prev_dir == "") {
             // there was no last dir
@@ -244,15 +238,13 @@ void ChangeDirCommand::execute() {
             return;
         }
         curr_dir = smash.getLastDir();
-    }
-    else if (arguments.empty()){
+    } else if (arguments.empty()) {
         // no argument what should i do ?
         return;
-    }
-    else{
+    } else {
         // need to change the directory to the given one
         int result = chdir(arguments[0]);
-        if (result != 0){
+        if (result != 0) {
             // chdir failed
             perror("smash error: chdir failed");
             return;
@@ -263,13 +255,14 @@ void ChangeDirCommand::execute() {
     smash.setLastDir(prev_dir);
 }
 
-ListDirectoryFilesCommand::ListDirectoryFilesCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+ListDirectoryFilesCommand::ListDirectoryFilesCommand(
+        const char *cmd_line) : BuiltInCommand(cmd_line) {
 
 }
 
 void ListDirectoryFilesCommand::execute() {
     struct dirent **namelist;
-    int i,n;
+    int i, n;
     n = scandir(".", &namelist, 0, alphasort);
     if (n < 0)
         perror("scandir");
@@ -280,6 +273,7 @@ void ListDirectoryFilesCommand::execute() {
         }
     }
     free(namelist);
+}
 //    char *currDirCommand = get_current_dir_name();
 //    vector<string> fileList;
 //    struct dirent *entry;
@@ -303,4 +297,19 @@ void ListDirectoryFilesCommand::execute() {
 //
 //    closedir(dir);
 //    delete currDirCommand;
+
+void JobsList::printJobsList() {
+    for (auto & i : jobsMap) {
+        time_t now = time(nullptr);
+        if(now == -1){
+            perror("smash error: time failed");
+            return;
+        }
+        cout << "[" << i.second.jobID << "]" << i.second.commandLine << " : "
+             << i.second.pid << " " << difftime(i.second.arriveTime, now);
+        if (i.second.stopped){
+            cout << "(stopped)" ;
+        }
+        cout << endl;
+    }
 }
