@@ -100,6 +100,8 @@ SmallShell::~SmallShell() {
 */
 Command *SmallShell::CreateCommand(const char *cmd_line) {
     string command = string(cmd_line);
+    // TODO: add command to detect pipeline
+    // TODO: add command to detect & sign
     if (command.find("chprompt") == 0) {
         return new ChangePromptCommand(cmd_line);
     } else if (command.find("ls") == 0) {
@@ -112,6 +114,19 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
         return new ChangeDirCommand(cmd_line);
     } else if (command.find("jobs") == 0) {
         return new JobsCommand(cmd_line, smash.getJobsReference());
+    } else if (command.find("kill") == 0) {
+
+    } else if (command.find("fg") == 0) {
+
+    } else if (command.find("bg") == 0) {
+
+    } else if (command.find("quit" == 0)) {
+
+        /*
+         * This part should include certain boolean flags for special commands (maybe should be above internal commands ifs)
+         */
+    } else {
+        // External command
     }
 
 //    } else if (command.find("showpid") == 0) {
