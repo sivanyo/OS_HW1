@@ -4,9 +4,9 @@
 #include <string>
 #include <vector>
 #include <time.h>
+#include <map>
 
 using std::string;
-using std::vector;
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
 #define HISTORY_MAX_RECORDS (50)
@@ -144,7 +144,17 @@ public:
     void execute() override;
 };
 
+class Jobs{
+public:
+    int JobID;
+    pid_t pid;
+    string commandLine;
+    time_t arriveTime;
+    bool stopped = false;
+};
+
 class JobsList {
+    std::map<int, Jobs> jobsMap;
 public:
     class JobEntry {
         // TODO: Add your data members
@@ -228,9 +238,24 @@ public:
 class SmallShell {
 private:
     // TODO: Add your data members
-    int pid = 0;
-    string prompt = "smash> ";
+    string prompt = "smash>";
+public:
+    const string &getLastDir() const;
 
+private:
+    string last_dir = "";
+public:
+    void setCurrDir(string currDir);
+
+private:
+    string curr_dir = "";
+public:
+    void setLastDir(string lastDir);
+
+public:
+    const string &getCurrDir() const;
+
+private:
     SmallShell();
 
 public:

@@ -139,6 +139,23 @@ void SmallShell::executeCommand(const char *cmd_line) {
     // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 
+const string &SmallShell::getCurrDir() const {
+    return curr_dir;
+}
+
+void SmallShell::setLastDir(string lastDir) {
+    last_dir = lastDir;
+}
+
+void SmallShell::setCurrDir(string currDir) {
+    curr_dir = currDir;
+}
+
+const string &SmallShell::getLastDir() const {
+    return last_dir;
+}
+
+
 string SmallShell::GetPrompt() {
     return prompt;
 }
@@ -161,10 +178,12 @@ void ChangePromptCommand::execute() {
     }
 }
 
-ChangePromptCommand::ChangePromptCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+ChangePromptCommand::ChangePromptCommand(
+        const char *cmd_line) : BuiltInCommand(cmd_line) {
 }
 
-Command::Command(const char *cmd_line) {
+Command::Command(
+        const char *cmd_line) {
     commandLine = string(cmd_line);
     vector<string> split = Utils::stringToWords(commandLine);
     baseCommand = split[0];
@@ -173,7 +192,8 @@ Command::Command(const char *cmd_line) {
     }
 }
 
-BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {
+BuiltInCommand::BuiltInCommand(
+        const char *cmd_line) : Command(cmd_line) {
 
 }
 
@@ -182,7 +202,8 @@ void ShowPidCommand::execute() {
     cout << "smash pid is " << smashPid << endl;
 }
 
-ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+ShowPidCommand::ShowPidCommand(
+        const char *cmd_line) : BuiltInCommand(cmd_line) {
 
 }
 
@@ -197,18 +218,44 @@ void GetCurrDirCommand::execute() {
     free(currDirCommand);
 }
 
-GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+GetCurrDirCommand::GetCurrDirCommand(
+        const char *cmd_line) : BuiltInCommand(cmd_line) {
 
 }
 
 void ChangeDirCommand::execute() {
-    if (arguments[0] == "-") {
+    string prev_dir = smash.getLastDir();
+    string curr_dir = "";
+    if (arguments.size() > 1) {
+        // more there one parameter passed
+        cout << "smash error: cd: too many arguments" << endl;
+    } else if (arguments[0] == "-") {
         // need to go back to prev dir
-        //std::swap()
+        if (prev_dir == "") {
+            // there was no last dir
+            cout << "smash error: cd: OLDPWD not set" << endl;
+            return;
+        }
+        curr_dir = smash.getLastDir();
+    } else if (arguments.empty()) {
+        // no argument what should i do ?
+        return;
+    } else {
+        // need to change the directory to the given one
+        int result = chdir(arguments[0]);
+        if (result != 0) {
+            // chdir failed
+            perror("smash error: chdir failed");
+            return;
+        }
+        curr_dir = arguments[0];
     }
+    smash.setCurrDir(curr_dir);
+    smash.setLastDir(prev_dir);
 }
 
-ListDirectoryFilesCommand::ListDirectoryFilesCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+ListDirectoryFilesCommand::ListDirectoryFilesCommand(
+        const char *cmd_line) : BuiltInCommand(cmd_line) {
 
 }
 
