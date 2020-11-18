@@ -194,7 +194,7 @@ void GetCurrDirCommand::execute() {
         return;
     }
     cout << currDirCommand << endl;
-    delete currDirCommand;
+    free(currDirCommand);
 }
 
 GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
@@ -213,39 +213,28 @@ ListDirectoryFilesCommand::ListDirectoryFilesCommand(const char *cmd_line) : Bui
 }
 
 void ListDirectoryFilesCommand::execute() {
+    vector<string> fileList;
     struct dirent **namelist;
-    int i,n;
-    n = scandir(".", &namelist, 0, alphasort);
+    int i, n;
+    n = scandir(".", &namelist, NULL, alphasort);
     if (n < 0)
         perror("scandir");
     else {
         for (i = 0; i < n; i++) {
-            printf("%s\n", namelist[i]->d_name);
-            free(namelist[i]);
+            if (strcmp(namelist[i]->d_name, ".") != 0 && strcmp(namelist[i]->d_name, "..") != 0) {
+                fileList.push_back(namelist[i]->d_name);
+            }
         }
     }
     free(namelist);
-//    char *currDirCommand = get_current_dir_name();
-//    vector<string> fileList;
-//    struct dirent *entry;
-//    DIR *dir = opendir(currDirCommand);
-//
-//    if (dir == nullptr) {
-//        return;
-//    }
-//    while ((entry = readdir(dir)) != nullptr) {
-//        int firstComp = strcmp(entry->d_name, ".");
-//        int secondComp = strcmp(entry->d_name, "..");
-//        if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
-//            fileList.push_back(entry->d_name);
-//        }
-//    }
-//    std::sort(fileList.begin(), fileList.end());
-//
-//    for (const auto& a : fileList) {
-//        std::cout << a << endl;
-//    }
-//
-//    closedir(dir);
-//    delete currDirCommand;
+
+    sort(fileList.begin(), fileList.end(), [](const auto &lhs, const auto &rhs) {
+        const auto result = mismatch(lhs.cbegin(), lhs.cend(), rhs.cbegin(), rhs.cend(),
+                                     [](const unsigned char lhs, const unsigned char rhs) { return tolower(lhs) == tolower(rhs); });
+
+        return result.second != rhs.cend() && (result.first == lhs.cend() || tolower(*result.first) < tolower(*result.second));
+    });
+    for (const auto &a : fileList) {
+        std::cout << a << endl;
+    }
 }
