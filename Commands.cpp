@@ -1,6 +1,8 @@
 #include <unistd.h>
+#include <dirent.h>
 #include <string.h>
 #include <iostream>
+#include <algorithm>
 #include <vector>
 #include <sstream>
 #include <sys/wait.h>
@@ -100,9 +102,14 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     string command = string(cmd_line);
     if (command.find("chprompt") == 0) {
         return new ChangePromptCommand(cmd_line);
+    } else if (command.find("ls") == 0) {
+        return new ListDirectoryFilesCommand(cmd_line);
     } else if (command.find("showpid") == 0) {
         return new ShowPidCommand(cmd_line);
+    } else if (command.find("pwd") == 0) {
+        return new GetCurrDirCommand(cmd_line);
     }
+
 //    } else if (command.find("showpid") == 0) {
 //        return
 //    }
@@ -209,13 +216,17 @@ ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) 
 
 
 void GetCurrDirCommand::execute() {
-    char* currDirCommand = get_current_dir_name();
+    char *currDirCommand = get_current_dir_name();
     if (currDirCommand == NULL) {
         perror("ERROR : get_current_dir_name failed");
         return;
     }
     cout << currDirCommand << endl;
-    free(currDirCommand);
+    delete currDirCommand;
+}
+
+GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+
 }
 
 void ChangeDirCommand::execute() {
@@ -250,4 +261,46 @@ void ChangeDirCommand::execute() {
     }
     smash.setCurrDir(curr_dir);
     smash.setLastDir(prev_dir);
+}
+
+ListDirectoryFilesCommand::ListDirectoryFilesCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+
+}
+
+void ListDirectoryFilesCommand::execute() {
+    struct dirent **namelist;
+    int i,n;
+    n = scandir(".", &namelist, 0, alphasort);
+    if (n < 0)
+        perror("scandir");
+    else {
+        for (i = 0; i < n; i++) {
+            printf("%s\n", namelist[i]->d_name);
+            free(namelist[i]);
+        }
+    }
+    free(namelist);
+//    char *currDirCommand = get_current_dir_name();
+//    vector<string> fileList;
+//    struct dirent *entry;
+//    DIR *dir = opendir(currDirCommand);
+//
+//    if (dir == nullptr) {
+//        return;
+//    }
+//    while ((entry = readdir(dir)) != nullptr) {
+//        int firstComp = strcmp(entry->d_name, ".");
+//        int secondComp = strcmp(entry->d_name, "..");
+//        if (strcmp(entry->d_name, ".") != 0 && strcmp(entry->d_name, "..") != 0) {
+//            fileList.push_back(entry->d_name);
+//        }
+//    }
+//    std::sort(fileList.begin(), fileList.end());
+//
+//    for (const auto& a : fileList) {
+//        std::cout << a << endl;
+//    }
+//
+//    closedir(dir);
+//    delete currDirCommand;
 }

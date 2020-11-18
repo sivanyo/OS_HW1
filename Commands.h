@@ -99,7 +99,7 @@ public:
 
 class ShowPidCommand : public BuiltInCommand {
 public:
-    ShowPidCommand(const char *cmd_line);
+    explicit ShowPidCommand(const char *cmd_line);
 
     virtual ~ShowPidCommand() {}
 
@@ -208,6 +208,15 @@ public:
     BackgroundCommand(const char *cmd_line, JobsList *jobs);
 
     virtual ~BackgroundCommand() {}
+
+    void execute() override;
+};
+
+class ListDirectoryFilesCommand: public BuiltInCommand {
+public:
+    ListDirectoryFilesCommand(const char *cmd_line);
+
+    virtual ~ListDirectoryFilesCommand() {}
 
     void execute() override;
 };
