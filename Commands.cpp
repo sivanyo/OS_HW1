@@ -86,7 +86,7 @@ void _removeBackgroundSign(char *cmd_line) {
 
 // TODO: Add your implementation for classes in Commands.h 
 
-SmallShell::SmallShell() {
+SmallShell::SmallShell() : jobs(JobsList()) {
 // TODO: add your implementation
     pid = getpid();
 }
@@ -108,6 +108,10 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
         return new ShowPidCommand(cmd_line);
     } else if (command.find("pwd") == 0) {
         return new GetCurrDirCommand(cmd_line);
+    } else if (command.find("cd") == 0) {
+        return new ChangeDirCommand(cmd_line);
+    } else if (command.find("jobs") == 0) {
+        return new JobsCommand(cmd_line, smash.getJobsReference());
     }
 
 //    } else if (command.find("showpid") == 0) {
@@ -168,6 +172,18 @@ int SmallShell::GetPid() {
     return pid;
 }
 
+const JobsList &SmallShell::getJobs() const {
+    return jobs;
+}
+
+JobsList *SmallShell::getJobsReference() {
+    return &jobs;
+}
+
+void SmallShell::setJobs(const JobsList &jobs) {
+    SmallShell::jobs = jobs;
+}
+
 void ChangePromptCommand::execute() {
     if (arguments.empty()) {
         smash.SetPrompt("smash> ");
@@ -178,12 +194,10 @@ void ChangePromptCommand::execute() {
     }
 }
 
-ChangePromptCommand::ChangePromptCommand(
-        const char *cmd_line) : BuiltInCommand(cmd_line) {
+ChangePromptCommand::ChangePromptCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
 }
 
-Command::Command(
-        const char *cmd_line) {
+Command::Command(const char *cmd_line) {
     commandLine = string(cmd_line);
     vector<string> split = Utils::stringToWords(commandLine);
     baseCommand = split[0];
@@ -192,8 +206,7 @@ Command::Command(
     }
 }
 
-BuiltInCommand::BuiltInCommand(
-        const char *cmd_line) : Command(cmd_line) {
+BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {
 
 }
 
@@ -202,24 +215,21 @@ void ShowPidCommand::execute() {
     cout << "smash pid is " << smashPid << endl;
 }
 
-ShowPidCommand::ShowPidCommand(
-        const char *cmd_line) : BuiltInCommand(cmd_line) {
+ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
 
 }
 
 
 void GetCurrDirCommand::execute() {
-    char *currDirCommand = get_current_dir_name();
-    if (currDirCommand == NULL) {
-        perror("ERROR : get_current_dir_name failed");
+    string result = Utils::GetCurrentWorkingDirectoryString();
+    if (result == "") {
         return;
+    } else {
+        cout << result << endl;
     }
-    cout << currDirCommand << endl;
-    free(currDirCommand);
 }
 
-GetCurrDirCommand::GetCurrDirCommand(
-        const char *cmd_line) : BuiltInCommand(cmd_line) {
+GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
 
 }
 
@@ -229,6 +239,7 @@ void ChangeDirCommand::execute() {
     if (arguments.size() > 1) {
         // more there one parameter passed
         cout << "smash error: cd: too many arguments" << endl;
+        return;
     } else if (arguments[0] == "-") {
         // need to go back to prev dir
         if (prev_dir == "") {
@@ -236,12 +247,20 @@ void ChangeDirCommand::execute() {
             cout << "smash error: cd: OLDPWD not set" << endl;
             return;
         }
+        prev_dir = smash.getCurrDir();
         curr_dir = smash.getLastDir();
+        int result = chdir(curr_dir.c_str());
+        if (result != 0) {
+            // chdir failed
+            perror("smash error: chdir failed");
+            return;
+        }
     } else if (arguments.empty()) {
         // no argument what should i do ?
         return;
     } else {
         // need to change the directory to the given one
+        prev_dir = Utils::GetCurrentWorkingDirectoryString();
         int result = chdir(arguments[0].c_str());
         if (result != 0) {
             // chdir failed
@@ -254,8 +273,11 @@ void ChangeDirCommand::execute() {
     smash.setLastDir(prev_dir);
 }
 
-ListDirectoryFilesCommand::ListDirectoryFilesCommand(
-        const char *cmd_line) : BuiltInCommand(cmd_line) {
+ChangeDirCommand::ChangeDirCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+
+}
+
+ListDirectoryFilesCommand::ListDirectoryFilesCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
 
 }
 
@@ -284,4 +306,70 @@ void ListDirectoryFilesCommand::execute() {
     for (const auto &a : fileList) {
         std::cout << a << endl;
     }
+}
+
+void JobsList::printJobsList() {
+    for (auto &i : jobsMap) {
+        time_t now = time(nullptr);
+        if (now == -1) {
+            perror("smash error: time failed");
+            return;
+        }
+        cout << "[" << i.second.getJobId() << "]" << i.second.getCommandLine() << " : "
+             << i.second.getPid() << " " << difftime(i.second.getArriveTime(), now);
+        if (i.second.isStopped()) {
+            cout << "(stopped)";
+        }
+        cout << endl;
+    }
+}
+
+JobsList::JobsList() = default;
+
+int JobsList::JobEntry::getJobId() const {
+    return jobID;
+}
+
+void JobsList::JobEntry::setJobId(int jobId) {
+    jobID = jobId;
+}
+
+pid_t JobsList::JobEntry::getPid() const {
+    return pid;
+}
+
+void JobsList::JobEntry::setPid(pid_t pid) {
+    JobEntry::pid = pid;
+}
+
+const string &JobsList::JobEntry::getCommandLine() const {
+    return commandLine;
+}
+
+void JobsList::JobEntry::setCommandLine(const string &commandLine) {
+    JobEntry::commandLine = commandLine;
+}
+
+time_t JobsList::JobEntry::getArriveTime() const {
+    return arriveTime;
+}
+
+void JobsList::JobEntry::setArriveTime(time_t arriveTime) {
+    JobEntry::arriveTime = arriveTime;
+}
+
+bool JobsList::JobEntry::isStopped() const {
+    return stopped;
+}
+
+void JobsList::JobEntry::setStopped(bool stopped) {
+    JobEntry::stopped = stopped;
+}
+
+JobsCommand::JobsCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), jobs(jobs) {
+
+}
+
+void JobsCommand::execute() {
+
 }

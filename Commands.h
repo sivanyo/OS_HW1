@@ -74,7 +74,7 @@ public:
 class ChangeDirCommand : public BuiltInCommand {
 // TODO: Add your data members
 public:
-    ChangeDirCommand(const char *cmd_line, char **plastPwd);
+    ChangeDirCommand(const char *cmd_line);
 
     virtual ~ChangeDirCommand() {}
 
@@ -145,26 +145,45 @@ public:
     void execute() override;
 };
 
-class Jobs{
-public:
-    int JobID;
-    pid_t pid;
-    string commandLine;
-    time_t arriveTime;
-    bool stopped = false;
-};
-
 class JobsList {
-    std::map<int, Jobs> jobsMap;
 public:
     class JobEntry {
         // TODO: Add your data members
+    private:
+        int jobID;
+        pid_t pid;
+        string commandLine;
+        time_t arriveTime;
+        bool stopped = false;
+    public:
+        int getJobId() const;
+
+        void setJobId(int jobId);
+
+        pid_t getPid() const;
+
+        void setPid(pid_t pid);
+
+        const string &getCommandLine() const;
+
+        void setCommandLine(const string &commandLine);
+
+        time_t getArriveTime() const;
+
+        void setArriveTime(time_t arriveTime);
+
+        bool isStopped() const;
+
+        void setStopped(bool stopped);
     };
+
+private:
     // TODO: Add your data members
+    std::map<int, JobEntry> jobsMap;
 public:
     JobsList();
 
-    ~JobsList();
+    ~JobsList() {};
 
     void addJob(Command *cmd, bool isStopped = false);
 
@@ -185,8 +204,9 @@ public:
 };
 
 class JobsCommand : public BuiltInCommand {
-    // TODO: Add your data members
+    JobsList* jobs;
 public:
+    //JobsCommand(const char *cmdLine, const char *cmd_line, JobsList *jobs);
     JobsCommand(const char *cmd_line, JobsList *jobs);
 
     virtual ~JobsCommand() {}
@@ -224,7 +244,7 @@ public:
     void execute() override;
 };
 
-class ListDirectoryFilesCommand: public BuiltInCommand {
+class ListDirectoryFilesCommand : public BuiltInCommand {
 public:
     ListDirectoryFilesCommand(const char *cmd_line);
 
@@ -258,6 +278,7 @@ public:
 
 private:
     SmallShell();
+    JobsList jobs;
     int pid = 0;
 
 public:
@@ -278,7 +299,14 @@ public:
     // TODO: add extra methods as needed
 
     int GetPid();
+
+    const JobsList &getJobs() const;
+    JobsList *getJobsReference();
+
+    void setJobs(const JobsList &jobs);
+
     string GetPrompt();
+
     void SetPrompt(string prompt);
 
 };

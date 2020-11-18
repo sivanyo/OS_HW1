@@ -14,6 +14,8 @@ using std::string;
 class Utils {
 public:
     static vector<string> stringToWords(const string& s);
+
+    static string GetCurrentWorkingDirectoryString();
 };
 
 

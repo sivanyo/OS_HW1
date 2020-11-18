@@ -2,6 +2,7 @@
 // Created by 1912m on 18/11/2020.
 //
 
+#include <unistd.h>
 #include "Utils.h"
 
 vector<string> Utils::stringToWords(const string& s) {
@@ -18,5 +19,16 @@ vector<string> Utils::stringToWords(const string& s) {
     if (word != "") {
         result.push_back(word);
     }
+    return result;
+}
+
+string Utils::GetCurrentWorkingDirectoryString() {
+    char *currDirCommand = get_current_dir_name();
+    if (currDirCommand == NULL) {
+        perror("ERROR : get_current_dir_name failed");
+        return "";
+    }
+    string result = currDirCommand;
+    free(currDirCommand);
     return result;
 }
