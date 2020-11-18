@@ -13,7 +13,7 @@ using std::string;
 
 class Utils {
 public:
-    static vector<string> stringToWords(string s);
+    static vector<string> stringToWords(const string& s);
 };
 
 

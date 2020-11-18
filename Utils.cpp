@@ -4,7 +4,7 @@
 
 #include "Utils.h"
 
-vector<string> Utils::stringToWords(string s) {
+vector<string> Utils::stringToWords(const string& s) {
     vector<string> result;
     string word = "";
     for (auto x: s) {

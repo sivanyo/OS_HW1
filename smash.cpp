@@ -5,6 +5,8 @@
 #include "Commands.h"
 #include "signals.h"
 
+SmallShell &smash = SmallShell::getInstance();
+
 // TODO: remove this before sending
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"
@@ -18,7 +20,7 @@ int main(int argc, char *argv[]) {
 
     //TODO: setup sig alarm handler
 
-    SmallShell &smash = SmallShell::getInstance();
+
     while (true) {
         std::cout << smash.GetPrompt();
         std::string cmd_line;

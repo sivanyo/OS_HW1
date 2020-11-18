@@ -24,7 +24,7 @@ protected:
 public:
     Command(const char *cmd_line);
 
-    virtual ~Command();
+    virtual ~Command() {};
 
     virtual void execute() = 0;
     //virtual void prepare();
@@ -173,10 +173,6 @@ public:
     // TODO: Add extra methods or modify exisitng ones as needed
 };
 
-int ChangePromptCommand(const char *cmd_line) {
-    return 0;
-}
-
 class JobsCommand : public BuiltInCommand {
     // TODO: Add your data members
 public:
@@ -227,8 +223,6 @@ private:
 
     SmallShell();
 
-    int ProcessChangePromptCommand(const char *cmd_line);
-
 public:
     Command *CreateCommand(const char *cmd_line);
 
@@ -247,6 +241,7 @@ public:
     // TODO: add extra methods as needed
 
     string GetPrompt();
+    void SetPrompt(string prompt);
 };
 
 #endif //SMASH_COMMAND_H_

@@ -8,6 +8,8 @@
 #include "Commands.h"
 #include "Utils.h"
 
+extern SmallShell &smash;
+
 using namespace std;
 
 const std::string WHITESPACE = " \n\r\t\f\v";
@@ -96,7 +98,6 @@ SmallShell::~SmallShell() {
 Command *SmallShell::CreateCommand(const char *cmd_line) {
     string command = string(cmd_line);
     if (command.find("chprompt") == 0) {
-        ChangePromptCommand("dfd");
         return new ChangePromptCommand(cmd_line);
     }
 //    } else if (command.find("showpid") == 0) {
@@ -118,6 +119,9 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
 }
 
 void SmallShell::executeCommand(const char *cmd_line) {
+    Command *cmd = CreateCommand(cmd_line);
+    cmd->execute();
+    delete cmd;
     // TODO: Add your implementation here
     // for example:
     // Command* cmd = CreateCommand(cmd_line);
@@ -129,16 +133,21 @@ string SmallShell::GetPrompt() {
     return prompt;
 }
 
-ChangePromptCommand::ChangePromptCommand(const char *cmd_line) :
-        BuiltInCommand(cmd_line) {
+void SmallShell::SetPrompt(string nPrompt) {
+    prompt = nPrompt;
 }
 
 void ChangePromptCommand::execute() {
     if (arguments.empty()) {
-        prompt = "smash> ";
+        smash.SetPrompt("smash> ");
     } else {
-        prompt = arguments[0];
+        string nPrompt = arguments[0];
+        nPrompt += "> ";
+        smash.SetPrompt(nPrompt);
     }
+}
+
+ChangePromptCommand::ChangePromptCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
 }
 
 Command::Command(const char *cmd_line) {
@@ -146,7 +155,7 @@ Command::Command(const char *cmd_line) {
     vector<string> split = Utils::stringToWords(commandLine);
     baseCommand = split[0];
     for (int i = 1; i < split.size(); ++i) {
-        arguments[i - 1] = split[i];
+        arguments.push_back(split[i]);
     }
 }
 
