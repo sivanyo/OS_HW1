@@ -363,8 +363,8 @@ void JobsList::printJobsList() {
             perror("smash error: time failed");
             return;
         }
-        cout << "[" << i.second.getJobId() << "]" << i.second.getCommandLine() << " : "
-             << i.second.getPid() << " " << difftime(i.second.getArriveTime(), now);
+        cout << "[" << i.second.getJobId() << "] " << i.second.getCommandLine() << " : "
+             << i.second.getPid() << " " << difftime(now, i.second.getArriveTime()) << " secs ";
         if (i.second.isStopped()) {
             cout << "(stopped)";
         }
@@ -458,7 +458,7 @@ JobsCommand::JobsCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(
 }
 
 void JobsCommand::execute() {
-
+    smash.getJobsReference()->printJobsList();
 }
 
 ExternalCommand::ExternalCommand(const char *cmd_line, bool isBackground) : Command(cmd_line) {
@@ -467,16 +467,6 @@ ExternalCommand::ExternalCommand(const char *cmd_line, bool isBackground) : Comm
 }
 
 void ExternalCommand::execute() {
-    /*
-     * In theory, this piece of code is running by the forked smash
-     * // EXTERNAL COMMAND FLOW: Create job, add to job list, run command using execv
-     * This part should:
-     * check if this is a background job
-     * create a new job and add it to the job list
-     * invoke the command using execv /bin/bash [command]
-     */
-    int commandPid = getpid();
-
     int pid = fork();
     if (pid == -1) {
         perror("smash error: fork failed");
@@ -496,6 +486,7 @@ void ExternalCommand::execute() {
         }
     } else {
         // parent
+        // TODO: remove this job after waiting is done
         int newJobId = smash.getJobs().getCurrentMaxJobId() + 1;
         smash.getJobsReference()->setCurrentMaxJobId(newJobId);
         smash.getJobsReference()->addJob(newJobId, pid, this, false);
