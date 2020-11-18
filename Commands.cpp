@@ -6,6 +6,7 @@
 #include <sys/wait.h>
 #include <iomanip>
 #include "Commands.h"
+#include "Utils.h"
 
 using namespace std;
 
@@ -95,10 +96,12 @@ SmallShell::~SmallShell() {
 Command *SmallShell::CreateCommand(const char *cmd_line) {
     string command = string(cmd_line);
     if (command.find("chprompt") == 0) {
-        ProcessChangePromptCommand(cmd_line);
-    } else if (command.find("showpid") == 0) {
-        return
+        ChangePromptCommand("dfd");
+        return new ChangePromptCommand(cmd_line);
     }
+//    } else if (command.find("showpid") == 0) {
+//        return
+//    }
     // For example:
 /*
   string cmd_s = string(cmd_line);
@@ -126,31 +129,27 @@ string SmallShell::GetPrompt() {
     return prompt;
 }
 
-ChangePromptCommand::ChangePromptCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
-    string command = string(cmd_line);
-    string* splitCommand = SplitCommandLineByWhitespace(command);
-    if (splitCommand->length() == 0) {
+ChangePromptCommand::ChangePromptCommand(const char *cmd_line) :
+        BuiltInCommand(cmd_line) {
+}
+
+void ChangePromptCommand::execute() {
+    if (arguments.empty()) {
         prompt = "smash> ";
-    } else if (splitCommand->length() >= 2) {
-        prompt = splitCommand[1];
+    } else {
+        prompt = arguments[0];
     }
 }
 
+Command::Command(const char *cmd_line) {
+    commandLine = string(cmd_line);
+    vector<string> split = Utils::stringToWords(commandLine);
+    baseCommand = split[0];
+    for (int i = 1; i < split.size(); ++i) {
+        arguments[i - 1] = split[i];
+    }
+}
 
-vector<string> stringToWords (string s){
-    vector<string> result;
-    string word="";
-    for (auto x: s){
-        if(x ==' ' && word!=""){
-            result.push_back(word);
-            word="";
-        }
-        else{
-            word=word+x;
-        }
-    }
-    if(word!=""){
-        result.push_back(word);
-    }
-    return result;
+BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {
+
 }

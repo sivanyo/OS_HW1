@@ -6,6 +6,7 @@
 #include <time.h>
 
 using std::string;
+using std::vector;
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
 #define HISTORY_MAX_RECORDS (50)
@@ -16,7 +17,7 @@ protected:
     int jobId = -1;
     string commandLine = "PLACEHOLDER";
     string baseCommand = "BASE_PLACEHOLDER";
-    string arguments[20] = {""};
+    vector<string> arguments;
     bool stopped = false;
     time_t startTime = time(nullptr);
 
@@ -88,9 +89,9 @@ public:
     void execute() override;
 };
 
-class ChangePromptCommand : public BuiltInCommand
+class ChangePromptCommand : public BuiltInCommand {
 public:
-    ChangePromptCommand(const char *cmd_line);
+    explicit ChangePromptCommand(const char *cmd_line);
 
     virtual ~ChangePromptCommand() {}
 
@@ -171,6 +172,10 @@ public:
     JobEntry *getLastStoppedJob(int *jobId);
     // TODO: Add extra methods or modify exisitng ones as needed
 };
+
+int ChangePromptCommand(const char *cmd_line) {
+    return 0;
+}
 
 class JobsCommand : public BuiltInCommand {
     // TODO: Add your data members
