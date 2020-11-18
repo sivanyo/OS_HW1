@@ -22,6 +22,54 @@ vector<string> Utils::stringToWords(const string& s) {
     return result;
 }
 
+bool Utils::isEndWithShtrud(const string &s) {
+    vector<string> res = stringToWords(s);
+    if(res[res.size()-1] == "&"){
+        return true;
+    }
+    return false;
+}
+
+bool Utils::isRedirectionComm(const string &s) {
+    vector<string> res = stringToWords(s);
+    for(int i = 0 ; i < res.size() ; i++){
+        if(res[i] == ">"){
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Utils::isRedirectionCommWithAppend(const string &s) {
+    vector<string> res = stringToWords(s);
+    for(int i = 0 ; i < res.size() ; i++){
+        if(res[i] == ">>"){
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Utils::isPipe(const string &s) {
+    vector<string> res = stringToWords(s);
+    for(int i = 0 ; i < res.size() ; i++){
+        if(res[i] == "|"){
+            return true;
+        }
+    }
+    return false;
+}
+
+bool Utils::isPipeAndRedirect(const string &s) {
+    vector<string> res = stringToWords(s);
+    for(int i = 0 ; i < res.size() ; i++){
+        if(res[i] == "|&"){
+            return true;
+        }
+    }
+    return false;
+}
+
 string Utils::GetCurrentWorkingDirectoryString() {
     char *currDirCommand = get_current_dir_name();
     if (currDirCommand == NULL) {

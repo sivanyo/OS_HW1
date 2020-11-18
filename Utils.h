@@ -14,6 +14,11 @@ using std::string;
 class Utils {
 public:
     static vector<string> stringToWords(const string& s);
+    static bool isEndWithShtrud(const string& s);
+    static bool isRedirectionComm(const string& s);
+    static bool isRedirectionCommWithAppend(const string& s);
+    static bool isPipe(const string& s);
+    static bool isPipeAndRedirect(const string& s);
 
     static string GetCurrentWorkingDirectoryString();
 };
