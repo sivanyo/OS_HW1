@@ -86,6 +86,7 @@ void _removeBackgroundSign(char *cmd_line) {
 
 SmallShell::SmallShell() {
 // TODO: add your implementation
+    pid = getpid();
 }
 
 SmallShell::~SmallShell() {
@@ -99,6 +100,8 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     string command = string(cmd_line);
     if (command.find("chprompt") == 0) {
         return new ChangePromptCommand(cmd_line);
+    } else if (command.find("showpid") == 0) {
+        return new ShowPidCommand(cmd_line);
     }
 //    } else if (command.find("showpid") == 0) {
 //        return
@@ -156,16 +159,52 @@ vector<string> stringToWords (string s){
         else{
             word=word+x;
         }
+string SmallShell::GetPrompt() {
+    return prompt;
+}
+
+void SmallShell::SetPrompt(string nPrompt) {
+    prompt = nPrompt;
+}
+
+int SmallShell::GetPid() {
+    return pid;
+}
+
+void ChangePromptCommand::execute() {
+    if (arguments.empty()) {
+        smash.SetPrompt("smash> ");
+    } else {
+        string nPrompt = arguments[0];
+        nPrompt += "> ";
+        smash.SetPrompt(nPrompt);
     }
-    if(word!=""){
-        result.push_back(word);
+}
+
+ChangePromptCommand::ChangePromptCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+}
+
+Command::Command(const char *cmd_line) {
+    commandLine = string(cmd_line);
+    vector<string> split = Utils::stringToWords(commandLine);
+    baseCommand = split[0];
+    for (int i = 1; i < split.size(); ++i) {
+        arguments.push_back(split[i]);
     }
     return result;
 }
 
+BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {
+
+}
 
 void ShowPidCommand::execute() {
-    cout << "smash pid is " << pid << endl;
+    int smashPid = smash.GetPid();
+    cout << "smash pid is " << smashPid << endl;
+}
+
+ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+
 }
 
 

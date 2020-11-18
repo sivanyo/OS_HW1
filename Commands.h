@@ -255,8 +255,10 @@ public:
     void executeCommand(const char *cmd_line);
     // TODO: add extra methods as needed
 
+    int GetPid();
     string GetPrompt();
     void SetPrompt(string prompt);
+
 };
 
 #endif //SMASH_COMMAND_H_
