@@ -86,6 +86,7 @@ void _removeBackgroundSign(char *cmd_line) {
 
 SmallShell::SmallShell() {
 // TODO: add your implementation
+    pid = getpid();
 }
 
 SmallShell::~SmallShell() {
@@ -99,6 +100,8 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     string command = string(cmd_line);
     if (command.find("chprompt") == 0) {
         return new ChangePromptCommand(cmd_line);
+    } else if (command.find("showpid") == 0) {
+        return new ShowPidCommand(cmd_line);
     }
 //    } else if (command.find("showpid") == 0) {
 //        return
@@ -129,27 +132,51 @@ void SmallShell::executeCommand(const char *cmd_line) {
     // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 
-vector<string> stringToWords (string s){
-    vector<string> result;
-    string word="";
-    for (auto x: s){
-        if(x ==' ' && word!=""){
-            result.push_back(word);
-            word="";
-        }
-        else{
-            word=word+x;
-        }
-    }
-    if(word!=""){
-        result.push_back(word);
-    }
-    return result;
+string SmallShell::GetPrompt() {
+    return prompt;
 }
 
+void SmallShell::SetPrompt(string nPrompt) {
+    prompt = nPrompt;
+}
+
+int SmallShell::GetPid() {
+    return pid;
+}
+
+void ChangePromptCommand::execute() {
+    if (arguments.empty()) {
+        smash.SetPrompt("smash> ");
+    } else {
+        string nPrompt = arguments[0];
+        nPrompt += "> ";
+        smash.SetPrompt(nPrompt);
+    }
+}
+
+ChangePromptCommand::ChangePromptCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+}
+
+Command::Command(const char *cmd_line) {
+    commandLine = string(cmd_line);
+    vector<string> split = Utils::stringToWords(commandLine);
+    baseCommand = split[0];
+    for (int i = 1; i < split.size(); ++i) {
+        arguments.push_back(split[i]);
+    }
+}
+
+BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {
+
+}
 
 void ShowPidCommand::execute() {
-    cout << "smash pid is " << pid << endl;
+    int smashPid = smash.GetPid();
+    cout << "smash pid is " << smashPid << endl;
+}
+
+ShowPidCommand::ShowPidCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+
 }
 
 
@@ -166,6 +193,6 @@ void GetCurrDirCommand::execute() {
 void ChangeDirCommand::execute() {
     if(arguments[0] == "-"){
         // need to go back to prev dir
-        std::swap()
+        //std::swap()
     }
 }

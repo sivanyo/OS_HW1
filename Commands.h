@@ -6,6 +6,7 @@
 #include <time.h>
 
 using std::string;
+using std::vector;
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
 #define HISTORY_MAX_RECORDS (50)
@@ -218,7 +219,8 @@ public:
 class SmallShell {
 private:
     // TODO: Add your data members
-    string prompt = "smash>";
+    int pid = 0;
+    string prompt = "smash> ";
 
     SmallShell();
 
@@ -239,8 +241,10 @@ public:
     void executeCommand(const char *cmd_line);
     // TODO: add extra methods as needed
 
+    int GetPid();
     string GetPrompt();
     void SetPrompt(string prompt);
+
 };
 
 #endif //SMASH_COMMAND_H_
