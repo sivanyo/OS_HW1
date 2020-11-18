@@ -41,10 +41,15 @@ public:
 };
 
 class ExternalCommand : public Command {
+    bool background = false;
 public:
-    ExternalCommand(const char *cmd_line);
+    ExternalCommand(const char *cmd_line, bool background);
 
     virtual ~ExternalCommand() {}
+
+    bool isBackground() const;
+
+    void setBackground(bool background);
 
     void execute() override;
 };
@@ -179,6 +184,8 @@ public:
 
 private:
     // TODO: Add your data members
+    int currentMaxPid = 0;
+    int currentMaxStoppedPid = 0;
     std::map<int, JobEntry> jobsMap;
 public:
     JobsList();
@@ -201,6 +208,13 @@ public:
 
     JobEntry *getLastStoppedJob(int *jobId);
     // TODO: Add extra methods or modify exisitng ones as needed
+    int getCurrentMaxPid() const;
+
+    void setCurrentMaxPid(int currentMaxPid);
+
+    int getCurrentMaxStoppedPid() const;
+
+    void setCurrentMaxStoppedPid(int currentMaxStoppedPid);
 };
 
 class JobsCommand : public BuiltInCommand {

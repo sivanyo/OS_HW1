@@ -339,6 +339,22 @@ void JobsList::printJobsList() {
     }
 }
 
+int JobsList::getCurrentMaxPid() const {
+    return currentMaxPid;
+}
+
+void JobsList::setCurrentMaxPid(int currentMaxPid) {
+    JobsList::currentMaxPid = currentMaxPid;
+}
+
+int JobsList::getCurrentMaxStoppedPid() const {
+    return currentMaxStoppedPid;
+}
+
+void JobsList::setCurrentMaxStoppedPid(int currentMaxStoppedPid) {
+    JobsList::currentMaxStoppedPid = currentMaxStoppedPid;
+}
+
 JobsList::JobsList() = default;
 
 int JobsList::JobEntry::getJobId() const {
@@ -387,4 +403,25 @@ JobsCommand::JobsCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(
 
 void JobsCommand::execute() {
 
+}
+
+ExternalCommand::ExternalCommand(const char *cmd_line, bool background) : Command(cmd_line), background(background) {
+
+}
+
+void ExternalCommand::execute() {
+    /*
+     * This part should:
+     * check if this is a background job
+     * create a new job and add it to the job list
+     * invoke the command using execv /bin/bash [command]
+     */
+}
+
+bool ExternalCommand::isBackground() const {
+    return background;
+}
+
+void ExternalCommand::setBackground(bool background) {
+    ExternalCommand::background = background;
 }
