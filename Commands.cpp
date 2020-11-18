@@ -129,36 +129,43 @@ void SmallShell::executeCommand(const char *cmd_line) {
     // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 
-string SmallShell::GetPrompt() {
-    return prompt;
-}
-
-void SmallShell::SetPrompt(string nPrompt) {
-    prompt = nPrompt;
-}
-
-void ChangePromptCommand::execute() {
-    if (arguments.empty()) {
-        smash.SetPrompt("smash> ");
-    } else {
-        string nPrompt = arguments[0];
-        nPrompt += "> ";
-        smash.SetPrompt(nPrompt);
+vector<string> stringToWords (string s){
+    vector<string> result;
+    string word="";
+    for (auto x: s){
+        if(x ==' ' && word!=""){
+            result.push_back(word);
+            word="";
+        }
+        else{
+            word=word+x;
+        }
     }
-}
-
-ChangePromptCommand::ChangePromptCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
-}
-
-Command::Command(const char *cmd_line) {
-    commandLine = string(cmd_line);
-    vector<string> split = Utils::stringToWords(commandLine);
-    baseCommand = split[0];
-    for (int i = 1; i < split.size(); ++i) {
-        arguments.push_back(split[i]);
+    if(word!=""){
+        result.push_back(word);
     }
+    return result;
 }
 
-BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {
 
+void ShowPidCommand::execute() {
+    cout << "smash pid is " << pid << endl;
+}
+
+
+void GetCurrDirCommand::execute() {
+    char* currDirCommand = get_current_dir_name();
+    if (currDirCommand == NULL) {
+        perror("ERROR : get_current_dir_name failed");
+        return;
+    }
+    cout << currDirCommand << endl;
+    free(currDirCommand);
+}
+
+void ChangeDirCommand::execute() {
+    if(arguments[0] == "-"){
+        // need to go back to prev dir
+        std::swap()
+    }
 }
