@@ -7,6 +7,7 @@
 #include <map>
 
 using std::string;
+using std::vector;
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
 #define HISTORY_MAX_RECORDS (50)
@@ -238,7 +239,7 @@ public:
 class SmallShell {
 private:
     // TODO: Add your data members
-    string prompt = "smash>";
+    string prompt = "smash> ";
 public:
     const string &getLastDir() const;
 
@@ -257,6 +258,7 @@ public:
 
 private:
     SmallShell();
+    int pid = 0;
 
 public:
     Command *CreateCommand(const char *cmd_line);

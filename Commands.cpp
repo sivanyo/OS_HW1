@@ -242,7 +242,7 @@ void ChangeDirCommand::execute() {
         return;
     } else {
         // need to change the directory to the given one
-        int result = chdir(arguments[0]);
+        int result = chdir(arguments[0].c_str());
         if (result != 0) {
             // chdir failed
             perror("smash error: chdir failed");
