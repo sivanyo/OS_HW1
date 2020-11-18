@@ -14,13 +14,12 @@ using std::vector;
 
 class Command {
 protected:
-    int pid = -1;
-    int jobId = -1;
     string commandLine = "PLACEHOLDER";
     string baseCommand = "BASE_PLACEHOLDER";
     vector<string> arguments;
     bool stopped = false;
-    time_t startTime = time(nullptr);
+    bool external = false;
+    bool background = false;
 
 public:
     Command(const char *cmd_line);
@@ -28,9 +27,22 @@ public:
     virtual ~Command() {};
 
     virtual void execute() = 0;
+
     //virtual void prepare();
     //virtual void cleanup();
     // TODO: Add your extra methods if needed
+    bool isExternal() const;
+
+    bool isBackground() const;
+
+    void setBackground(bool background);
+
+    const string &getCommandLine() const;
+
+    const string &getBaseCommand() const;
+
+    const vector<string> &getArguments() const;
+
 };
 
 class BuiltInCommand : public Command {
@@ -41,15 +53,10 @@ public:
 };
 
 class ExternalCommand : public Command {
-    bool background = false;
 public:
-    ExternalCommand(const char *cmd_line, bool background);
+    ExternalCommand(const char *cmd_line, bool isBackground);
 
     virtual ~ExternalCommand() {}
-
-    bool isBackground() const;
-
-    void setBackground(bool background);
 
     void execute() override;
 };
@@ -156,22 +163,22 @@ public:
         // TODO: Add your data members
     private:
         int jobID;
-        pid_t pid;
-        string commandLine;
+        int pid;
+        Command *command;
         time_t arriveTime;
         bool stopped = false;
     public:
+        JobEntry(int jobId, int pid, Command *cmd);
+
         int getJobId() const;
 
         void setJobId(int jobId);
 
-        pid_t getPid() const;
+        int getPid() const;
 
-        void setPid(pid_t pid);
+        void setPid(int pid);
 
         const string &getCommandLine() const;
-
-        void setCommandLine(const string &commandLine);
 
         time_t getArriveTime() const;
 
@@ -180,12 +187,16 @@ public:
         bool isStopped() const;
 
         void setStopped(bool stopped);
+
+        void deleteCommand();
+
+        ~JobEntry();
     };
 
 private:
     // TODO: Add your data members
-    int currentMaxPid = 0;
-    int currentMaxStoppedPid = 0;
+    int currentMaxJobId = 0;
+    int currentMaxStoppedJobId = 0;
     std::map<int, JobEntry> jobsMap;
 public:
     JobsList();
@@ -193,6 +204,8 @@ public:
     ~JobsList() {};
 
     void addJob(Command *cmd, bool isStopped = false);
+
+    void addJob(int pid, int jobId, Command *cmd, bool isStopped = false);
 
     void printJobsList();
 
@@ -207,18 +220,19 @@ public:
     JobEntry *getLastJob(int *lastJobId);
 
     JobEntry *getLastStoppedJob(int *jobId);
+
     // TODO: Add extra methods or modify exisitng ones as needed
-    int getCurrentMaxPid() const;
+    int getCurrentMaxJobId() const;
 
-    void setCurrentMaxPid(int currentMaxPid);
+    void setCurrentMaxJobId(int currentMaxPid);
 
-    int getCurrentMaxStoppedPid() const;
+    int getCurrentMaxStoppedJobId() const;
 
-    void setCurrentMaxStoppedPid(int currentMaxStoppedPid);
+    void setCurrentMaxStoppedJobId(int currentMaxStoppedPid);
 };
 
 class JobsCommand : public BuiltInCommand {
-    JobsList* jobs;
+    JobsList *jobs;
 public:
     //JobsCommand(const char *cmdLine, const char *cmd_line, JobsList *jobs);
     JobsCommand(const char *cmd_line, JobsList *jobs);
@@ -292,6 +306,7 @@ public:
 
 private:
     SmallShell();
+
     JobsList jobs;
     int pid = 0;
 
@@ -315,9 +330,10 @@ public:
     int GetPid();
 
     const JobsList &getJobs() const;
+
     JobsList *getJobsReference();
 
-    void setJobs(const JobsList &jobs);
+    void setJobs(JobsList &jobs);
 
     string GetPrompt();
 

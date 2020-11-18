@@ -3,6 +3,7 @@
 #include <string.h>
 #include <iostream>
 #include <algorithm>
+#include <utility>
 #include <vector>
 #include <sstream>
 #include <sys/wait.h>
@@ -120,13 +121,14 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
 
     } else if (command.find("bg") == 0) {
 
-    } else if (command.find("quit" == 0)) {
+    } else if (command.find("quit") == 0) {
 
         /*
          * This part should include certain boolean flags for special commands (maybe should be above internal commands ifs)
          */
     } else {
         // External command
+        return new ExternalCommand(cmd_line, false);
     }
 
 //    } else if (command.find("showpid") == 0) {
@@ -149,8 +151,15 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
 
 void SmallShell::executeCommand(const char *cmd_line) {
     Command *cmd = CreateCommand(cmd_line);
-    cmd->execute();
-    delete cmd;
+    if (cmd->isExternal()) {
+        if (!cmd->isBackground()) {
+            cmd->execute();
+        }
+    } else {
+        cmd->execute();
+        delete cmd;
+    }
+
     // TODO: Add your implementation here
     // for example:
     // Command* cmd = CreateCommand(cmd_line);
@@ -195,7 +204,7 @@ JobsList *SmallShell::getJobsReference() {
     return &jobs;
 }
 
-void SmallShell::setJobs(const JobsList &jobs) {
+void SmallShell::setJobs(JobsList &jobs) {
     SmallShell::jobs = jobs;
 }
 
@@ -219,6 +228,30 @@ Command::Command(const char *cmd_line) {
     for (int i = 1; i < split.size(); ++i) {
         arguments.push_back(split[i]);
     }
+}
+
+bool Command::isExternal() const {
+    return external;
+}
+
+bool Command::isBackground() const {
+    return background;
+}
+
+void Command::setBackground(bool background) {
+    Command::background = background;
+}
+
+const string &Command::getCommandLine() const {
+    return commandLine;
+}
+
+const string &Command::getBaseCommand() const {
+    return baseCommand;
+}
+
+const vector<string> &Command::getArguments() const {
+    return arguments;
 }
 
 BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {
@@ -339,20 +372,31 @@ void JobsList::printJobsList() {
     }
 }
 
-int JobsList::getCurrentMaxPid() const {
-    return currentMaxPid;
+int JobsList::getCurrentMaxJobId() const {
+    return currentMaxJobId;
 }
 
-void JobsList::setCurrentMaxPid(int currentMaxPid) {
-    JobsList::currentMaxPid = currentMaxPid;
+void JobsList::setCurrentMaxJobId(int currentMaxPid) {
+    JobsList::currentMaxJobId = currentMaxPid;
 }
 
-int JobsList::getCurrentMaxStoppedPid() const {
-    return currentMaxStoppedPid;
+int JobsList::getCurrentMaxStoppedJobId() const {
+    return currentMaxStoppedJobId;
 }
 
-void JobsList::setCurrentMaxStoppedPid(int currentMaxStoppedPid) {
-    JobsList::currentMaxStoppedPid = currentMaxStoppedPid;
+void JobsList::setCurrentMaxStoppedJobId(int currentMaxStoppedPid) {
+    JobsList::currentMaxStoppedJobId = currentMaxStoppedPid;
+}
+
+void JobsList::addJob(int jobId, int pid, Command *cmd, bool isStopped) {
+    JobEntry nJob(jobId, pid, cmd);
+    jobsMap.insert(std::pair<int, JobEntry>(jobId, nJob));
+}
+
+void JobsList::removeJobById(int jobId) {
+    JobEntry job = jobsMap.find(jobId)->second;
+    job.deleteCommand();
+    jobsMap.erase(jobId);
 }
 
 JobsList::JobsList() = default;
@@ -374,11 +418,7 @@ void JobsList::JobEntry::setPid(pid_t pid) {
 }
 
 const string &JobsList::JobEntry::getCommandLine() const {
-    return commandLine;
-}
-
-void JobsList::JobEntry::setCommandLine(const string &commandLine) {
-    JobEntry::commandLine = commandLine;
+    return command->getCommandLine();
 }
 
 time_t JobsList::JobEntry::getArriveTime() const {
@@ -397,6 +437,22 @@ void JobsList::JobEntry::setStopped(bool stopped) {
     JobEntry::stopped = stopped;
 }
 
+JobsList::JobEntry::JobEntry(int jobId, int pid, Command *cmd) : jobID(jobId), pid(pid), command(cmd) {
+    arriveTime = time(nullptr);
+    if (arriveTime == -1) {
+        // TODO: maybe fix in case of failure
+        perror("smash error: time failed");
+    }
+}
+
+JobsList::JobEntry::~JobEntry() {
+    //delete command;
+}
+
+void JobsList::JobEntry::deleteCommand() {
+    delete command;
+}
+
 JobsCommand::JobsCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), jobs(jobs) {
 
 }
@@ -405,23 +461,49 @@ void JobsCommand::execute() {
 
 }
 
-ExternalCommand::ExternalCommand(const char *cmd_line, bool background) : Command(cmd_line), background(background) {
-
+ExternalCommand::ExternalCommand(const char *cmd_line, bool isBackground) : Command(cmd_line) {
+    background = isBackground;
+    external = true;
 }
 
 void ExternalCommand::execute() {
     /*
+     * In theory, this piece of code is running by the forked smash
+     * // EXTERNAL COMMAND FLOW: Create job, add to job list, run command using execv
      * This part should:
      * check if this is a background job
      * create a new job and add it to the job list
      * invoke the command using execv /bin/bash [command]
      */
-}
+    int commandPid = getpid();
 
-bool ExternalCommand::isBackground() const {
-    return background;
-}
+    int pid = fork();
+    if (pid == -1) {
+        perror("smash error: fork failed");
+        return;
+    } else if (pid == 0) {
+        std::cout << "this is process " << getpid() << "with forked pid: " << pid << "running an external command" << endl;
 
-void ExternalCommand::setBackground(bool background) {
-    ExternalCommand::background = background;
+        char fullArgs[COMMAND_ARGS_MAX_LENGTH] = {0};
+        strcpy(fullArgs, commandLine.c_str());
+        _trim(fullArgs);
+
+        char *const argsArray[] = {(char *) "/bin/bash", (char *) "-c", fullArgs, nullptr};
+        int result = execv("/bin/bash", argsArray);
+        if (result == -1) {
+            perror("smash error: execv failed");
+            return;
+        }
+    } else {
+        // parent
+        int newJobId = smash.getJobs().getCurrentMaxJobId() + 1;
+        smash.getJobsReference()->setCurrentMaxJobId(newJobId);
+        smash.getJobsReference()->addJob(newJobId, pid, this, false);
+        if (!isBackground()) {
+            std::cout << "waiting for pid: " << pid << std::endl;
+            waitpid(pid, nullptr, 0);
+        }
+    }
+
+
 }
