@@ -129,6 +129,22 @@ void SmallShell::executeCommand(const char *cmd_line) {
     // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 
+const string &SmallShell::getCurrDir() const {
+    return curr_dir;
+}
+
+void SmallShell::setLastDir(string lastDir) {
+    last_dir = lastDir;
+}
+
+void SmallShell::setCurrDir(string currDir) {
+    curr_dir = currDir;
+}
+
+const string &SmallShell::getLastDir() const {
+    return last_dir;
+}
+
 vector<string> stringToWords (string s){
     vector<string> result;
     string word="";
@@ -164,8 +180,35 @@ void GetCurrDirCommand::execute() {
 }
 
 void ChangeDirCommand::execute() {
-    if(arguments[0] == "-"){
-        // need to go back to prev dir
-        std::swap()
+    string prev_dir = smash.getLastDir();
+    string curr_dir = "";
+    if (arguments.size() > 1){
+        // more there one parameter passed
+        cout << "smash error: cd: too many arguments" << endl;
     }
+    else if(arguments[0] == "-") {
+        // need to go back to prev dir
+        if (prev_dir == "") {
+            // there was no last dir
+            cout << "smash error: cd: OLDPWD not set" << endl;
+            return;
+        }
+        curr_dir = smash.getLastDir();
+    }
+    else if (arguments.empty()){
+        // no argument what should i do ?
+        return;
+    }
+    else{
+        // need to change the directory to the given one
+        int result = chdir(arguments[0]);
+        if (result != 0){
+            // chdir failed
+            perror("smash error: chdir failed");
+            return;
+        }
+        curr_dir = arguments[0];
+    }
+    smash.setCurrDir(curr_dir);
+    smash.setLastDir(prev_dir);
 }

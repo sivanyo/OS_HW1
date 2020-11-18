@@ -219,7 +219,23 @@ class SmallShell {
 private:
     // TODO: Add your data members
     string prompt = "smash>";
+public:
+    const string &getLastDir() const;
 
+private:
+    string last_dir = "";
+public:
+    void setCurrDir(string currDir);
+
+private:
+    string curr_dir = "";
+public:
+    void setLastDir(string lastDir);
+
+public:
+    const string &getCurrDir() const;
+
+private:
     SmallShell();
 
 public:
