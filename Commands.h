@@ -188,6 +188,10 @@ public:
 
         void setStopped(bool stopped);
 
+        bool isBackground() const;
+
+        __unused void setBackground(bool set);
+
         void deleteCommand();
 
         ~JobEntry();
@@ -199,6 +203,8 @@ private:
     int currentMaxStoppedJobId = 0;
     std::map<int, JobEntry> jobsMap;
 public:
+    const std::map<int, JobEntry> &getJobsMap() const;
+
     JobsList();
 
     ~JobsList() {};
@@ -303,6 +309,7 @@ public:
 
 public:
     const string &getCurrDir() const;
+    int getJobsListSize();
 
 private:
     SmallShell();

@@ -208,6 +208,10 @@ void SmallShell::setJobs(JobsList &jobs) {
     SmallShell::jobs = jobs;
 }
 
+int SmallShell::getJobsListSize() {
+    return smash.jobs.;
+}
+
 void ChangePromptCommand::execute() {
     if (arguments.empty()) {
         smash.SetPrompt("smash> ");
@@ -399,6 +403,10 @@ void JobsList::removeJobById(int jobId) {
     jobsMap.erase(jobId);
 }
 
+const map<int, JobsList::JobEntry> &JobsList::getJobsMap() const {
+    return jobsMap;
+}
+
 JobsList::JobsList() = default;
 
 int JobsList::JobEntry::getJobId() const {
@@ -453,6 +461,15 @@ void JobsList::JobEntry::deleteCommand() {
     delete command;
 }
 
+bool JobsList::JobEntry::isBackground() const {
+    return command->isBackground();
+}
+
+void JobsList::JobEntry::setBackground(bool set) {
+    command->setBackground(set);
+
+}
+
 JobsCommand::JobsCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), jobs(jobs) {
 
 }
@@ -494,6 +511,41 @@ void ExternalCommand::execute() {
             std::cout << "waiting for pid: " << pid << std::endl;
             waitpid(pid, nullptr, 0);
         }
+    }
+
+
+}
+
+void BackgroundCommand::execute() {
+    if (arguments.size() > 1) {
+        cout << "smash error: fg: invalid arguments" << endl;
+        return;
+    }
+    int jobID;
+    if (arguments.size() == 0) {
+        // no job id passed
+        if (smash.getJobs().getJobsMap().size() == 0) {
+            // no args anf no jobs - error
+            cout << "smash error: fg: jobs list is empty" << endl;
+            return;
+        }
+        // need to take the max job id
+        jobID = smash.getJobs().getCurrentMaxJobId();
+    } else {
+        // check if there exit such an ID at the map
+        if (smash.getJobs().getJobsMap().find(stoi(arguments[0])) == smash.getJobs().getJobsMap().end()) {
+            // there is no such jobID :(
+            cout << "smash error: fg: job-id " << arguments[0] << " does not exist" << endl;
+        }
+        jobID = stoi(arguments[0]);
+    }
+    string cmdLine = smash.getJobs().getJobsMap().find(jobID)->second.getCommandLine();
+    int jobPid = smash.getJobs().getJobsMap().find(jobID)->second.getPid();
+    cout << cmdLine << " : " << jobPid << endl;
+    smash.getJobs().getJobsMap().find(jobID)->second.setBackground(false);
+    if(killpg(jobPid, SIGCONT) == -1){
+        perror("smash error: kill failed");
+        return;
     }
 
 
