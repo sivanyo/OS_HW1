@@ -39,8 +39,6 @@ public:
 
     const char *getCommandLine() const;
 
-    void setCommandLine(const char *commandLine);
-
     const string &getBaseCommand() const;
 
     const vector<string> &getArguments() const;
@@ -192,7 +190,7 @@ public:
 
         bool isBackground() const;
 
-        void setBackground(bool set);
+        void setBackground(bool set) const;
 
         void deleteCommand();
 
@@ -264,7 +262,7 @@ public:
 class ForegroundCommand : public BuiltInCommand {
     // TODO: Add your data members
 public:
-    ForegroundCommand(const char *cmd_line, JobsList *jobs);
+    ForegroundCommand(const char *cmdLine);
 
     virtual ~ForegroundCommand() {}
 

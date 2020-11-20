@@ -124,7 +124,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     } else if (command.find("kill") == 0) {
 
     } else if (command.find("fg") == 0) {
-
+        return new ForegroundCommand(cmd_line);
     } else if (command.find("bg") == 0) {
 
     } else if (command.find("quit") == 0) {
@@ -212,9 +212,9 @@ void SmallShell::setJobs(JobsList &jobs) {
     SmallShell::jobs = jobs;
 }
 
-int SmallShell::getJobsListSize() {
-    return smash.jobs.;
-}
+//int SmallShell::getJobsListSize() {
+//    return smash.jobs.;
+//}
 
 void ChangePromptCommand::execute() {
     if (arguments.empty()) {
@@ -231,7 +231,7 @@ ChangePromptCommand::ChangePromptCommand(const char *cmd_line) : BuiltInCommand(
 
 Command::Command(const char *cmd_line) {
     int len = strlen(cmd_line);
-    char * nCom = new char[len + 1];
+    char *nCom = new char[len + 1];
     strcpy(nCom, cmd_line);
     commandLine = nCom;
     vector<string> split = Utils::stringToWords(commandLine);
@@ -405,7 +405,7 @@ void JobsList::setCurrentMaxStoppedJobId(int currentMaxStoppedPid) {
 
 int JobsList::addJob(int pid, Command *cmd, bool isStopped) {
     int nJobId = getCurrentMaxJobId();
-    nJobId +=1;
+    nJobId += 1;
     JobEntry nJob(nJobId, pid, cmd);
     jobsMap.insert(std::pair<int, JobEntry>(nJobId, nJob));
     setCurrentMaxJobId(nJobId);
@@ -486,7 +486,7 @@ bool JobsList::JobEntry::isBackground() const {
     return command->isBackground();
 }
 
-void JobsList::JobEntry::setBackground(bool set) {
+void JobsList::JobEntry::setBackground(bool set) const {
     command->setBackground(set);
 
 }
@@ -543,6 +543,10 @@ void ExternalCommand::execute() {
 }
 
 void BackgroundCommand::execute() {
+
+}
+
+void ForegroundCommand::execute() {
     if (arguments.size() > 1) {
         cout << "smash error: fg: invalid arguments" << endl;
         return;
@@ -559,20 +563,25 @@ void BackgroundCommand::execute() {
         jobID = smash.getJobs().getCurrentMaxJobId();
     } else {
         // check if there exit such an ID at the map
-        if (smash.getJobs().getJobsMap().find(stoi(arguments[0])) == smash.getJobs().getJobsMap().end()) {
+        int inputJobId = stoi(arguments[0]);
+        if (smash.getJobs().getJobsMap().find(inputJobId) == smash.getJobs().getJobsMap().end()) {
             // there is no such jobID :(
             cout << "smash error: fg: job-id " << arguments[0] << " does not exist" << endl;
+            return;
         }
-        jobID = stoi(arguments[0]);
+        jobID = inputJobId;
     }
     string cmdLine = smash.getJobs().getJobsMap().find(jobID)->second.getCommandLine();
     int jobPid = smash.getJobs().getJobsMap().find(jobID)->second.getPid();
     cout << cmdLine << " : " << jobPid << endl;
     smash.getJobs().getJobsMap().find(jobID)->second.setBackground(false);
-    if(killpg(jobPid, SIGCONT) == -1){
+    if (killpg(jobPid, SIGCONT) == -1) {
         perror("smash error: kill failed");
         return;
     }
+    waitpid(jobPid, nullptr, 0);
+}
 
+ForegroundCommand::ForegroundCommand(const char *cmdLine) : BuiltInCommand(cmdLine) {
 
 }
