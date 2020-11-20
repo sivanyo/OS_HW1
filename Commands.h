@@ -24,8 +24,6 @@ protected:
 public:
     Command(const char *cmd_line);
 
-    Command(const Command &old);
-
     virtual ~Command();
 
     virtual void execute() = 0;
@@ -192,6 +190,10 @@ public:
 
         void setStopped(bool stopped);
 
+        bool isBackground() const;
+
+        void setBackground(bool set);
+
         void deleteCommand();
 
         ~JobEntry();
@@ -203,6 +205,8 @@ private:
     int currentMaxStoppedJobId = 0;
     std::map<int, JobEntry> jobsMap;
 public:
+    const std::map<int, JobEntry> &getJobsMap() const;
+
     JobsList();
 
     ~JobsList() {};
@@ -304,6 +308,7 @@ public:
     void setCurrDir(string currDir);
     void setLastDir(string lastDir);
     Command *CreateCommand(const char *cmd_line);
+    int getJobsListSize();
 
     SmallShell(SmallShell const &) = delete; // disable copy ctor
     void operator=(SmallShell const &) = delete; // disable = operator
