@@ -22,7 +22,7 @@ vector<string> Utils::stringToWords(const string& s) {
     return result;
 }
 
-bool Utils::isEndWithShtrud(const string &s) {
+bool Utils::isBackgroundCommand(const string &s) {
     vector<string> res = stringToWords(s);
     if(res[res.size()-1] == "&"){
         return true;
@@ -30,7 +30,7 @@ bool Utils::isEndWithShtrud(const string &s) {
     return false;
 }
 
-bool Utils::isRedirectionComm(const string &s) {
+bool Utils::isRedirectionCommand(const string &s) {
     vector<string> res = stringToWords(s);
     for(int i = 0 ; i < res.size() ; i++){
         if(res[i] == ">"){
@@ -40,7 +40,7 @@ bool Utils::isRedirectionComm(const string &s) {
     return false;
 }
 
-bool Utils::isRedirectionCommWithAppend(const string &s) {
+bool Utils::isRedirectionCommandWithAppend(const string &s) {
     vector<string> res = stringToWords(s);
     for(int i = 0 ; i < res.size() ; i++){
         if(res[i] == ">>"){

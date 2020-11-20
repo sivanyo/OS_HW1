@@ -14,7 +14,7 @@ using std::vector;
 
 class Command {
 protected:
-    string commandLine = "PLACEHOLDER";
+    char * commandLine;
     string baseCommand = "BASE_PLACEHOLDER";
     vector<string> arguments;
     bool stopped = false;
@@ -24,7 +24,9 @@ protected:
 public:
     Command(const char *cmd_line);
 
-    virtual ~Command() {};
+    Command(const Command &old);
+
+    virtual ~Command();
 
     virtual void execute() = 0;
 
@@ -37,7 +39,9 @@ public:
 
     void setBackground(bool background);
 
-    const string &getCommandLine() const;
+    const char *getCommandLine() const;
+
+    void setCommandLine(const char *commandLine);
 
     const string &getBaseCommand() const;
 
@@ -178,7 +182,7 @@ public:
 
         void setPid(int pid);
 
-        const string &getCommandLine() const;
+        const char *getCommandLine() const;
 
         time_t getArriveTime() const;
 
@@ -205,7 +209,8 @@ public:
 
     void addJob(Command *cmd, bool isStopped = false);
 
-    void addJob(int pid, int jobId, Command *cmd, bool isStopped = false);
+    int addJob(int pid, int jobId, Command *cmd, bool isStopped = false);
+    int addJob(int jobId, Command *cmd, bool isStopped = false);
 
     void printJobsList();
 
@@ -287,30 +292,17 @@ public:
 class SmallShell {
 private:
     // TODO: Add your data members
-    string prompt = "smash> ";
-public:
-    const string &getLastDir() const;
-
-private:
-    string last_dir = "";
-public:
-    void setCurrDir(string currDir);
-
-private:
-    string curr_dir = "";
-public:
-    void setLastDir(string lastDir);
-
-public:
-    const string &getCurrDir() const;
-
-private:
     SmallShell();
-
     JobsList jobs;
     int pid = 0;
-
+    string prompt = "smash> ";
+    string last_dir = "";
+    string curr_dir = "";
 public:
+    const string &getLastDir() const;
+    const string &getCurrDir() const;
+    void setCurrDir(string currDir);
+    void setLastDir(string lastDir);
     Command *CreateCommand(const char *cmd_line);
 
     SmallShell(SmallShell const &) = delete; // disable copy ctor

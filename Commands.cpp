@@ -101,6 +101,12 @@ SmallShell::~SmallShell() {
 */
 Command *SmallShell::CreateCommand(const char *cmd_line) {
     string command = string(cmd_line);
+    bool background = _isBackgroundComamnd(cmd_line);
+    bool redirectOutput = Utils::isRedirectionCommand(command);
+    bool redirectAppend = Utils::isRedirectionCommandWithAppend(command);
+    bool pipe = Utils::isPipe(command);
+    bool pipeRedirect = Utils::isPipeAndRedirect(command);
+
     // TODO: add command to detect pipeline
     // TODO: add command to detect & sign
     if (command.find("chprompt") == 0) {
@@ -128,7 +134,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
          */
     } else {
         // External command
-        return new ExternalCommand(cmd_line, false);
+        return new ExternalCommand(cmd_line, background);
     }
 
 //    } else if (command.find("showpid") == 0) {
@@ -152,9 +158,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
 void SmallShell::executeCommand(const char *cmd_line) {
     Command *cmd = CreateCommand(cmd_line);
     if (cmd->isExternal()) {
-        if (!cmd->isBackground()) {
-            cmd->execute();
-        }
+        cmd->execute();
     } else {
         cmd->execute();
         delete cmd;
@@ -222,7 +226,10 @@ ChangePromptCommand::ChangePromptCommand(const char *cmd_line) : BuiltInCommand(
 }
 
 Command::Command(const char *cmd_line) {
-    commandLine = string(cmd_line);
+    int len = strlen(cmd_line);
+    char * nCom = new char[len + 1];
+    strcpy(nCom, cmd_line);
+    commandLine = nCom;
     vector<string> split = Utils::stringToWords(commandLine);
     baseCommand = split[0];
     for (int i = 1; i < split.size(); ++i) {
@@ -242,16 +249,20 @@ void Command::setBackground(bool background) {
     Command::background = background;
 }
 
-const string &Command::getCommandLine() const {
-    return commandLine;
-}
-
 const string &Command::getBaseCommand() const {
     return baseCommand;
 }
 
 const vector<string> &Command::getArguments() const {
     return arguments;
+}
+
+const char *Command::getCommandLine() const {
+    return commandLine;
+}
+
+Command::~Command() {
+    delete commandLine;
 }
 
 BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {
@@ -388,9 +399,19 @@ void JobsList::setCurrentMaxStoppedJobId(int currentMaxStoppedPid) {
     JobsList::currentMaxStoppedJobId = currentMaxStoppedPid;
 }
 
-void JobsList::addJob(int jobId, int pid, Command *cmd, bool isStopped) {
+int JobsList::addJob(int pid, Command *cmd, bool isStopped) {
+    int nJobId = getCurrentMaxJobId();
+    nJobId +=1;
+    JobEntry nJob(nJobId, pid, cmd);
+    jobsMap.insert(std::pair<int, JobEntry>(nJobId, nJob));
+    setCurrentMaxJobId(nJobId);
+    return nJobId;
+}
+
+int JobsList::addJob(int jobId, int pid, Command *cmd, bool isStopped) {
     JobEntry nJob(jobId, pid, cmd);
     jobsMap.insert(std::pair<int, JobEntry>(jobId, nJob));
+    return jobId;
 }
 
 void JobsList::removeJobById(int jobId) {
@@ -417,7 +438,7 @@ void JobsList::JobEntry::setPid(pid_t pid) {
     JobEntry::pid = pid;
 }
 
-const string &JobsList::JobEntry::getCommandLine() const {
+const char *JobsList::JobEntry::getCommandLine() const {
     return command->getCommandLine();
 }
 
@@ -467,17 +488,22 @@ ExternalCommand::ExternalCommand(const char *cmd_line, bool isBackground) : Comm
 }
 
 void ExternalCommand::execute() {
+//    char fullArgs[COMMAND_ARGS_MAX_LENGTH] = {0};
+//    strcpy(fullArgs, commandLine);
+//    _trim(fullArgs);
+//    _removeBackgroundSign(fullArgs);
     int pid = fork();
     if (pid == -1) {
         perror("smash error: fork failed");
         return;
     } else if (pid == 0) {
+        setpgrp();
         std::cout << "this is process " << getpid() << "with forked pid: " << pid << "running an external command" << endl;
 
         char fullArgs[COMMAND_ARGS_MAX_LENGTH] = {0};
-        strcpy(fullArgs, commandLine.c_str());
+        strcpy(fullArgs, commandLine);
         _trim(fullArgs);
-
+        _removeBackgroundSign(fullArgs);
         char *const argsArray[] = {(char *) "/bin/bash", (char *) "-c", fullArgs, nullptr};
         int result = execv("/bin/bash", argsArray);
         if (result == -1) {
@@ -487,12 +513,12 @@ void ExternalCommand::execute() {
     } else {
         // parent
         // TODO: remove this job after waiting is done
-        int newJobId = smash.getJobs().getCurrentMaxJobId() + 1;
-        smash.getJobsReference()->setCurrentMaxJobId(newJobId);
-        smash.getJobsReference()->addJob(newJobId, pid, this, false);
+        int nJobId = smash.getJobsReference()->addJob(pid, this, false);
         if (!isBackground()) {
-            std::cout << "waiting for pid: " << pid << std::endl;
+            std::cout << "waiting for job: " << nJobId << " with pid: " << pid << std::endl;
             waitpid(pid, nullptr, 0);
+        } else {
+            std::cout << "running job: " << nJobId << " in the background with pid: " << pid << std::endl;
         }
     }
 
