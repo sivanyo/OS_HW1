@@ -21,6 +21,8 @@ public:
     static bool isPipeAndRedirect(const string& s);
 
     static string GetCurrentWorkingDirectoryString();
+
+    static bool isInteger(const std::string & s);
 };
 
 

@@ -37,6 +37,10 @@ public:
 
     void setBackground(bool background);
 
+    bool isStopped() const;
+
+    void setStopped(bool stopped);
+
     const char *getCommandLine() const;
 
     const string &getBaseCommand() const;
@@ -186,7 +190,7 @@ public:
 
         bool isStopped() const;
 
-        void setStopped(bool stopped);
+        void setStopped(bool stopped) const;
 
         bool isBackground() const;
 
@@ -226,7 +230,7 @@ public:
 
     JobEntry *getLastJob(int *lastJobId);
 
-    JobEntry *getLastStoppedJob();
+    void updateLastStoppedJobId();
 
     // TODO: Add extra methods or modify exisitng ones as needed
     int getCurrentMaxJobId() const;
@@ -257,7 +261,7 @@ public:
 class KillCommand : public BuiltInCommand {
     // TODO: Add your data members
 public:
-    KillCommand(const char *cmdLine, const char *cmd_line);
+    KillCommand(const char *cmdLine);
 
     virtual ~KillCommand() {}
 

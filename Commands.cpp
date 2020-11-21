@@ -122,7 +122,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     } else if (command.find("jobs") == 0) {
         return new JobsCommand(cmd_line, smash.getJobsReference());
     } else if (command.find("kill") == 0) {
-
+        return new KillCommand(cmd_line);
     } else if (command.find("fg") == 0) {
         return new ForegroundCommand(cmd_line);
     } else if (command.find("bg") == 0) {
@@ -273,6 +273,14 @@ const char *Command::getCommandLine() const {
 
 Command::~Command() {
     delete commandLine;
+}
+
+bool Command::isStopped() const {
+    return stopped;
+}
+
+void Command::setStopped(bool stopped) {
+    Command::stopped = stopped;
 }
 
 BuiltInCommand::BuiltInCommand(const char *cmd_line) : Command(cmd_line) {
@@ -477,23 +485,17 @@ int JobsList::getJobIdByProcessId(int pid) {
     return maxJobID;
 }
 
-JobsList::JobEntry *JobsList::getLastStoppedJob() {
-    if (smash.getJobs().getJobsMap().size() == 0 ){
-        return nullptr;
+void JobsList::updateLastStoppedJobId() {
+    if (smash.getJobs().getJobsMap().size() == 0) {
+        currentMaxStoppedJobId = 0;
     }
-    JobEntry lastStoppedJob = JobEntry(0,0, nullptr);
-    int max_pid = 0;
-    for(auto item : smash.getJobs().getJobsMap()){
-        if(item.second.isStopped() && item.second.getPid() > max_pid){
-            max_pid = item.second.getPid();
-            lastStoppedJob = item.second;
+    int maxJobId = 0;
+    for (auto item : smash.getJobs().getJobsMap()) {
+        if (item.first > maxJobId && item.second.isStopped()) {
+            maxJobId = item.first;
         }
     }
-    if(lastStoppedJob.getCommandLine() == nullptr){
-        // there is no stopped job in the list
-        return nullptr;
-    }
-    return &lastStoppedJob;
+    currentMaxStoppedJobId = maxJobId;
 }
 
 JobsList::JobsList() = default;
@@ -526,14 +528,6 @@ void JobsList::JobEntry::setArriveTime(time_t arriveTime) {
     JobEntry::arriveTime = arriveTime;
 }
 
-bool JobsList::JobEntry::isStopped() const {
-    return stopped;
-}
-
-void JobsList::JobEntry::setStopped(bool stopped) {
-    JobEntry::stopped = stopped;
-}
-
 JobsList::JobEntry::JobEntry(int jobId, int pid, Command *cmd) : jobID(jobId), pid(pid), command(cmd) {
     arriveTime = time(nullptr);
     if (arriveTime == -1) {
@@ -557,6 +551,14 @@ bool JobsList::JobEntry::isBackground() const {
 void JobsList::JobEntry::setBackground(bool set) const {
     command->setBackground(set);
 
+}
+
+void JobsList::JobEntry::setStopped(bool stopped) const {
+    command->setStopped(stopped);
+}
+
+bool JobsList::JobEntry::isStopped() const {
+    command->isStopped();
 }
 
 JobsCommand::JobsCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), jobs(jobs) {
@@ -607,50 +609,49 @@ void ExternalCommand::execute() {
 }
 
 void BackgroundCommand::execute() {
-    if(arguments.size() > 1 ){
+    if (arguments.size() > 1) {
         // to many args
         cout << "smash error: bg: invalid arguments" << endl;
         return;
     }
     int jobID = 0;
-    if(arguments.size()==1){
+    if (arguments.size() == 1) {
         std::size_t *num = nullptr;
         jobID = std::stoi(arguments[0], num);
-        if(*num != arguments[0].size()){
+        if (*num != arguments[0].size()) {
             // the argument is not consist of numeric characters
             cout << "smash error: bg: invalid arguments" << endl;
             return;
-        }
-        else if(smash.getJobs().getJobsMap().find(jobID) == smash.getJobs().getJobsMap().end()){
+        } else if (smash.getJobs().getJobsMap().find(jobID) == smash.getJobs().getJobsMap().end()) {
             // there is not such job at the map
-            cout << "smash error: bg: job-id "<< jobID << " does not exist" << endl;
+            cout << "smash error: bg: job-id " << jobID << " does not exist" << endl;
             return;
         }
-        if(smash.getJobs().getJobsMap().find(jobID)->second.isBackground() &&
-                !smash.getJobs().getJobsMap().find(jobID)->second.isStopped()){
+        if (smash.getJobs().getJobsMap().find(jobID)->second.isBackground() &&
+            !smash.getJobs().getJobsMap().find(jobID)->second.isStopped()) {
             // the job is already running at the background
             cout << "smash error: bg: job-id " << jobID << " is already running in the background" << endl;
             return;
         }
-    }
-    else{
+    } else {
         // there is no argument, need to get the last job that stopped
         jobID = smash.getJobs().getCurrentMaxStoppedJobId();
-        if(jobID == 0){
+        smash.getJobsReference()->updateLastStoppedJobId();
+
+        if (jobID == 0) {
             cout << "smash error: bg: there is no stopped jobs to resume" << endl;
             return;
         }
     }
     string cmdLine = smash.getJobs().getJobsMap().find(jobID)->second.getCommandLine();
-    int pid =  smash.getJobs().getJobsMap().find(jobID)->second.getPid();
-    cout << cmdLine << " : " << pid <<endl;
-    if(kill(pid,SIGCONT) == -1){
+    int pid = smash.getJobs().getJobsMap().find(jobID)->second.getPid();
+    cout << cmdLine << " : " << pid << endl;
+    if (kill(pid, SIGCONT) == -1) {
         // syscall falied
         perror("smash error: kill failed");
         return;;
     }
-    // is necessary ?
-    smash.getJobs().getJobsMap().find(jobID)->second.setBackground(true);
+    smash.getJobs().getJobsMap().at(jobID).setStopped(false);
 
 }
 
@@ -704,31 +705,37 @@ void KillCommand::execute() {
         return;
     }
     // there are two arguments, need to check validity
-    std::size_t *numArg1 = nullptr;
-    std::size_t *numArg2 = nullptr;
-    int signumArg = std::stoi(arguments[0], numArg1);
-    int jobID = std::stoi(arguments[1], numArg2);
-    if (*numArg1 != arguments[0].size() || *numArg2 != arguments[1].size() || signumArg > 0) {
+    int signumArg = 0;
+    int jobId = 0;
+    if (!Utils::isInteger(arguments[0]) || !Utils::isInteger(arguments[1])) {
         // the arguments are not numeric characters
         cout << "smash error: kill: invalid arguments" << endl;
         return;
+    } else {
+        signumArg = std::stoi(arguments[0]);
+        jobId = std::stoi(arguments[1]);
+        if (signumArg >= 0 ) {
+            // An invalid signal was provided
+            cout << "smash error: kill: invalid arguments" << endl;
+            return;
+        }
     }
-    if (smash.getJobs().getJobsMap().find(jobID) == smash.getJobs().getJobsMap().end()) {
+    if (smash.getJobs().getJobsMap().find(jobId) == smash.getJobs().getJobsMap().end()) {
         // there is no such job id, cant send signal
-        cout << "smash error: kill: job-id " << jobID << " does not exist" << endl;
+        cout << "smash error: kill: job-id " << jobId << " does not exist" << endl;
         return;
     }
     int realSignNum = abs(signumArg);
-    int jobPid = smash.getJobs().getJobsMap().find(jobID)->second.getPid();
+    int jobPid = smash.getJobs().getJobsMap().find(jobId)->second.getPid();
     if (kill(jobPid, realSignNum) == -1) {
         perror("smash error: kill failed");
     } else if (realSignNum == 9) {
         // the process will be finished, need to remove from job list
-        smash.getJobsReference()->removeJobById(jobID);
+        smash.getJobsReference()->removeJobById(jobId);
     }
     cout << "signal number " << realSignNum << " was sent to pid " << jobPid << endl;
 }
 
-KillCommand::KillCommand(const char *cmdLine, const char *cmd_line) : BuiltInCommand(cmdLine) {
+KillCommand::KillCommand(const char *cmdLine) : BuiltInCommand(cmdLine) {
 
 }
