@@ -693,6 +693,7 @@ void ForegroundCommand::execute() {
         return;
     }
     waitpid(jobPid, nullptr, 0);
+    smash.getJobsReference()->removeJobById(jobID);
 }
 
 ForegroundCommand::ForegroundCommand(const char *cmdLine) : BuiltInCommand(cmdLine) {

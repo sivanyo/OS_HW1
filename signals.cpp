@@ -25,7 +25,7 @@ void ctrlCHandler(int sig_num) {
             return;
         }
         std::cout << "smash: process " << procPid << " was killed" << std::endl;
-        smash.getJobsReference()->removeJobById(jobId);
+        //smash.getJobsReference()->removeJobById(jobId);
     }
 }
 
