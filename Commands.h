@@ -236,6 +236,9 @@ public:
     int getCurrentMaxStoppedJobId() const;
 
     void setCurrentMaxStoppedJobId(int currentMaxStoppedPid);
+
+    int getMaxKeyInMap();
+
 };
 
 class JobsCommand : public BuiltInCommand {
@@ -252,7 +255,7 @@ public:
 class KillCommand : public BuiltInCommand {
     // TODO: Add your data members
 public:
-    KillCommand(const char *cmd_line, JobsList *jobs);
+    KillCommand(const char *cmdLine, const char *cmd_line);
 
     virtual ~KillCommand() {}
 

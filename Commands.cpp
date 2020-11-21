@@ -428,10 +428,25 @@ void JobsList::removeJobById(int jobId) {
     JobEntry job = jobsMap.find(jobId)->second;
     job.deleteCommand();
     jobsMap.erase(jobId);
+    setCurrentMaxJobId(getMaxKeyInMap());
 }
 
 const map<int, JobsList::JobEntry> &JobsList::getJobsMap() const {
     return jobsMap;
+}
+
+int JobsList::getMaxKeyInMap() {
+    if(jobsMap.size() == 0){
+        // no jobs in the map
+        return 0;
+    }
+    int maxJobID = 0;
+    for(const auto& item : jobsMap){
+        if(item.first > maxJobID){
+            maxJobID=item.first;
+        }
+    }
+    return maxJobID;
 }
 
 JobsList::JobsList() = default;
@@ -595,5 +610,41 @@ void ForegroundCommand::execute() {
 }
 
 ForegroundCommand::ForegroundCommand(const char *cmdLine) : BuiltInCommand(cmdLine) {
+
+}
+
+void KillCommand::execute() {
+    if (arguments.size() != 2){
+        cout << "smash error: kill: invalid arguments" << endl;
+        return;
+    }
+    // there are two arguments, need to check validity
+    std::size_t *numArg1 = nullptr;
+    std::size_t *numArg2 = nullptr;
+    int signumArg = std::stoi(arguments[0], numArg1);
+    int jobID = std::stoi(arguments[1], numArg2);
+    if (*numArg1 != arguments[0].size() || *numArg2 != arguments[1].size() || signumArg > 0){
+        // the arguments are not numeric characters
+        cout << "smash error: kill: invalid arguments" << endl;
+        return;
+    }
+    if(smash.getJobs().getJobsMap().find(jobID) == smash.getJobs().getJobsMap().end()){
+        // there is no such job id, cant send signal
+        cout << "smash error: kill: job-id "<< jobID << " does not exist" << endl;
+        return;
+    }
+    int realSignNum = abs(signumArg);
+    int jobPid = smash.getJobs().getJobsMap().find(jobID)->second.getPid();
+    if(kill(jobPid, realSignNum) == -1){
+        perror("smash error: kill failed");
+    }
+    else if(realSignNum == 9){
+        // the process will be finished, need to remove from job list
+        smash.getJobsReference()->removeJobById(jobID);
+    }
+    cout<<"signal number "<<realSignNum<<" was sent to pid "<<jobPid<<endl;
+}
+
+KillCommand::KillCommand(const char *cmdLine, const char *cmd_line) : BuiltInCommand(cmdLine) {
 
 }
