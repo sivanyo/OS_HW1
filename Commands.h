@@ -162,7 +162,7 @@ public:
     class JobEntry {
         // TODO: Add your data members
     private:
-        int jobID;
+        int jobID = 0;
         int pid;
         Command *command;
         time_t arriveTime;

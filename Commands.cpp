@@ -133,6 +133,9 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
          * This part should include certain boolean flags for special commands (maybe should be above internal commands ifs)
          */
     } else {
+        if (command.empty()) {
+            return nullptr;
+        }
         // External command
         return new ExternalCommand(cmd_line, background);
     }
@@ -157,12 +160,15 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
 
 void SmallShell::executeCommand(const char *cmd_line) {
     Command *cmd = CreateCommand(cmd_line);
-    if (cmd->isExternal()) {
-        cmd->execute();
-    } else {
-        cmd->execute();
-        delete cmd;
+    if (cmd) {
+        if (cmd->isExternal()) {
+            cmd->execute();
+        } else {
+            cmd->execute();
+            delete cmd;
+        }
     }
+
 
     // TODO: Add your implementation here
     // for example:
@@ -515,7 +521,7 @@ void ExternalCommand::execute() {
         return;
     } else if (pid == 0) {
         setpgrp();
-        std::cout << "this is process " << getpid() << "with forked pid: " << pid << "running an external command" << endl;
+        //std::cout << "this is process " << getpid() << "with forked pid: " << pid << "running an external command" << endl;
 
         char fullArgs[COMMAND_ARGS_MAX_LENGTH] = {0};
         strcpy(fullArgs, commandLine);
@@ -530,12 +536,11 @@ void ExternalCommand::execute() {
     } else {
         // parent
         // TODO: remove this job after waiting is done
+        // TODO: parent should "delete" (probably by waiting) for all the finished processes before adding the job and assigning a new job id
         int nJobId = smash.getJobsReference()->addJob(pid, this, false);
         if (!isBackground()) {
             std::cout << "waiting for job: " << nJobId << " with pid: " << pid << std::endl;
             waitpid(pid, nullptr, 0);
-        } else {
-            std::cout << "running job: " << nJobId << " in the background with pid: " << pid << std::endl;
         }
     }
 
