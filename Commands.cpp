@@ -422,10 +422,25 @@ void JobsList::removeJobById(int jobId) {
     JobEntry job = jobsMap.find(jobId)->second;
     job.deleteCommand();
     jobsMap.erase(jobId);
+    setCurrentMaxJobId(getMaxKeyInMap());
 }
 
 const map<int, JobsList::JobEntry> &JobsList::getJobsMap() const {
     return jobsMap;
+}
+
+int JobsList::getMaxKeyInMap() {
+    if(jobsMap.size() == 0){
+        // no jobs in the map
+        return 0;
+    }
+    int maxJobID = 0;
+    for(const auto& item : jobsMap){
+        if(item.first > maxJobID){
+            maxJobID=item.first;
+        }
+    }
+    return maxJobID;
 }
 
 JobsList::JobsList() = default;

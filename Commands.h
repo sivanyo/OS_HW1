@@ -236,6 +236,9 @@ public:
     int getCurrentMaxStoppedJobId() const;
 
     void setCurrentMaxStoppedJobId(int currentMaxStoppedPid);
+
+    int getMaxKeyInMap();
+
 };
 
 class JobsCommand : public BuiltInCommand {
