@@ -436,14 +436,42 @@ const map<int, JobsList::JobEntry> &JobsList::getJobsMap() const {
 }
 
 int JobsList::getMaxKeyInMap() {
-    if(jobsMap.size() == 0){
+    if (jobsMap.size() == 0) {
         // no jobs in the map
         return 0;
     }
     int maxJobID = 0;
-    for(const auto& item : jobsMap){
-        if(item.first > maxJobID){
-            maxJobID=item.first;
+    for (const auto &item : jobsMap) {
+        if (item.first > maxJobID) {
+            maxJobID = item.first;
+        }
+    }
+    return maxJobID;
+}
+
+void JobsList::removeFinishedJobs() {
+    int childPid;
+    int status;
+    childPid = waitpid(-1, &status, WNOHANG);
+    while (childPid > 0) {
+        int jobId = getJobIdByProcessId(childPid);
+        if (jobId != 0) {
+            removeJobById(jobId);
+        }
+        childPid = waitpid(-1, &status, WNOHANG);
+    }
+}
+
+int JobsList::getJobIdByProcessId(int pid) {
+    int maxJobID = 0;
+
+    if (jobsMap.size() == 0) {
+        // no jobs in the map
+        return maxJobID;
+    }
+    for (const auto &item : jobsMap) {
+        if (item.second.getPid() == pid) {
+            return item.first;
         }
     }
     return maxJobID;
@@ -517,6 +545,7 @@ JobsCommand::JobsCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(
 }
 
 void JobsCommand::execute() {
+    smash.getJobsReference()->removeFinishedJobs();
     smash.getJobsReference()->printJobsList();
 }
 
@@ -526,10 +555,6 @@ ExternalCommand::ExternalCommand(const char *cmd_line, bool isBackground) : Comm
 }
 
 void ExternalCommand::execute() {
-//    char fullArgs[COMMAND_ARGS_MAX_LENGTH] = {0};
-//    strcpy(fullArgs, commandLine);
-//    _trim(fullArgs);
-//    _removeBackgroundSign(fullArgs);
     int pid = fork();
     if (pid == -1) {
         perror("smash error: fork failed");
@@ -550,19 +575,12 @@ void ExternalCommand::execute() {
         }
     } else {
         // parent
-        // TODO: remove this job after waiting is done
-        // TODO: parent should "delete" (probably by waiting) for all the finished processes before adding the job and assigning a new job id
-        int childPid;
-        int status;
-        childPid = waitpid(-1, &status, WNOHANG) > 0;
-        while (childPid) {
-
-            childPid = waitpid(-1, &status, WNOHANG) > 0;
-        }
+        smash.getJobsReference()->removeFinishedJobs();
         int nJobId = smash.getJobsReference()->addJob(pid, this, false);
         if (!isBackground()) {
             std::cout << "waiting for job: " << nJobId << " with pid: " << pid << std::endl;
             waitpid(pid, nullptr, 0);
+            smash.getJobsReference()->removeJobById(nJobId);
         }
     }
 
@@ -614,7 +632,7 @@ ForegroundCommand::ForegroundCommand(const char *cmdLine) : BuiltInCommand(cmdLi
 }
 
 void KillCommand::execute() {
-    if (arguments.size() != 2){
+    if (arguments.size() != 2) {
         cout << "smash error: kill: invalid arguments" << endl;
         return;
     }
@@ -623,26 +641,25 @@ void KillCommand::execute() {
     std::size_t *numArg2 = nullptr;
     int signumArg = std::stoi(arguments[0], numArg1);
     int jobID = std::stoi(arguments[1], numArg2);
-    if (*numArg1 != arguments[0].size() || *numArg2 != arguments[1].size() || signumArg > 0){
+    if (*numArg1 != arguments[0].size() || *numArg2 != arguments[1].size() || signumArg > 0) {
         // the arguments are not numeric characters
         cout << "smash error: kill: invalid arguments" << endl;
         return;
     }
-    if(smash.getJobs().getJobsMap().find(jobID) == smash.getJobs().getJobsMap().end()){
+    if (smash.getJobs().getJobsMap().find(jobID) == smash.getJobs().getJobsMap().end()) {
         // there is no such job id, cant send signal
-        cout << "smash error: kill: job-id "<< jobID << " does not exist" << endl;
+        cout << "smash error: kill: job-id " << jobID << " does not exist" << endl;
         return;
     }
     int realSignNum = abs(signumArg);
     int jobPid = smash.getJobs().getJobsMap().find(jobID)->second.getPid();
-    if(kill(jobPid, realSignNum) == -1){
+    if (kill(jobPid, realSignNum) == -1) {
         perror("smash error: kill failed");
-    }
-    else if(realSignNum == 9){
+    } else if (realSignNum == 9) {
         // the process will be finished, need to remove from job list
         smash.getJobsReference()->removeJobById(jobID);
     }
-    cout<<"signal number "<<realSignNum<<" was sent to pid "<<jobPid<<endl;
+    cout << "signal number " << realSignNum << " was sent to pid " << jobPid << endl;
 }
 
 KillCommand::KillCommand(const char *cmdLine, const char *cmd_line) : BuiltInCommand(cmdLine) {

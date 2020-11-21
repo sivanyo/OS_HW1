@@ -239,6 +239,8 @@ public:
 
     int getMaxKeyInMap();
 
+    int getJobIdByProcessId(int pid);
+
 };
 
 class JobsCommand : public BuiltInCommand {
