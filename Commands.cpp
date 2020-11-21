@@ -537,6 +537,13 @@ void ExternalCommand::execute() {
         // parent
         // TODO: remove this job after waiting is done
         // TODO: parent should "delete" (probably by waiting) for all the finished processes before adding the job and assigning a new job id
+        int childPid;
+        int status;
+        childPid = waitpid(-1, &status, WNOHANG) > 0;
+        while (childPid) {
+
+            childPid = waitpid(-1, &status, WNOHANG) > 0;
+        }
         int nJobId = smash.getJobsReference()->addJob(pid, this, false);
         if (!isBackground()) {
             std::cout << "waiting for job: " << nJobId << " with pid: " << pid << std::endl;
