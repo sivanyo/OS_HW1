@@ -226,7 +226,7 @@ public:
 
     JobEntry *getLastJob(int *lastJobId);
 
-    JobEntry *getLastStoppedJob(int *jobId);
+    JobEntry *getLastStoppedJob();
 
     // TODO: Add extra methods or modify exisitng ones as needed
     int getCurrentMaxJobId() const;
@@ -277,7 +277,7 @@ public:
 class BackgroundCommand : public BuiltInCommand {
     // TODO: Add your data members
 public:
-    BackgroundCommand(const char *cmd_line, JobsList *jobs);
+    BackgroundCommand(const char *cmdLine);
 
     virtual ~BackgroundCommand() {}
 
@@ -311,7 +311,7 @@ public:
     void setCurrDir(string currDir);
     void setLastDir(string lastDir);
     Command *CreateCommand(const char *cmd_line);
-    int getJobsListSize();
+
 
     SmallShell(SmallShell const &) = delete; // disable copy ctor
     void operator=(SmallShell const &) = delete; // disable = operator

@@ -477,6 +477,25 @@ int JobsList::getJobIdByProcessId(int pid) {
     return maxJobID;
 }
 
+JobsList::JobEntry *JobsList::getLastStoppedJob() {
+    if (smash.getJobs().getJobsMap().size() == 0 ){
+        return nullptr;
+    }
+    JobEntry lastStoppedJob = JobEntry(0,0, nullptr);
+    int max_pid = 0;
+    for(auto item : smash.getJobs().getJobsMap()){
+        if(item.second.isStopped() && item.second.getPid() > max_pid){
+            max_pid = item.second.getPid();
+            lastStoppedJob = item.second;
+        }
+    }
+    if(lastStoppedJob.getCommandLine() == nullptr){
+        // there is no stopped job in the list
+        return nullptr;
+    }
+    return &lastStoppedJob;
+}
+
 JobsList::JobsList() = default;
 
 int JobsList::JobEntry::getJobId() const {
@@ -588,6 +607,54 @@ void ExternalCommand::execute() {
 }
 
 void BackgroundCommand::execute() {
+    if(arguments.size() > 1 ){
+        // to many args
+        cout << "smash error: bg: invalid arguments" << endl;
+        return;
+    }
+    int jobID = 0;
+    if(arguments.size()==1){
+        std::size_t *num = nullptr;
+        jobID = std::stoi(arguments[0], num);
+        if(*num != arguments[0].size()){
+            // the argument is not consist of numeric characters
+            cout << "smash error: bg: invalid arguments" << endl;
+            return;
+        }
+        else if(smash.getJobs().getJobsMap().find(jobID) == smash.getJobs().getJobsMap().end()){
+            // there is not such job at the map
+            cout << "smash error: bg: job-id "<< jobID << " does not exist" << endl;
+            return;
+        }
+        if(smash.getJobs().getJobsMap().find(jobID)->second.isBackground() &&
+                !smash.getJobs().getJobsMap().find(jobID)->second.isStopped()){
+            // the job is already running at the background
+            cout << "smash error: bg: job-id " << jobID << " is already running in the background" << endl;
+            return;
+        }
+    }
+    else{
+        // there is no argument, need to get the last job that stopped
+        jobID = smash.getJobs().getCurrentMaxStoppedJobId();
+        if(jobID == 0){
+            cout << "smash error: bg: there is no stopped jobs to resume" << endl;
+            return;
+        }
+    }
+    string cmdLine = smash.getJobs().getJobsMap().find(jobID)->second.getCommandLine();
+    int pid =  smash.getJobs().getJobsMap().find(jobID)->second.getPid();
+    cout << cmdLine << " : " << pid <<endl;
+    if(kill(pid,SIGCONT) == -1){
+        // syscall falied
+        perror("smash error: kill failed");
+        return;;
+    }
+    // is necessary ?
+    smash.getJobs().getJobsMap().find(jobID)->second.setBackground(true);
+
+}
+
+BackgroundCommand::BackgroundCommand(const char *cmdLine) : BuiltInCommand(cmdLine) {
 
 }
 
