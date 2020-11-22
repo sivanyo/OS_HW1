@@ -14,7 +14,7 @@ using std::vector;
 
 class Command {
 protected:
-    char * commandLine;
+    char *commandLine;
     string baseCommand = "BASE_PLACEHOLDER";
     vector<string> arguments;
     bool stopped = false;
@@ -128,6 +128,7 @@ class JobsList;
 
 class QuitCommand : public BuiltInCommand {
 // TODO: Add your data members public:
+public:
     QuitCommand(const char *cmdLine);
 
     virtual ~QuitCommand() {}
@@ -216,6 +217,7 @@ public:
     void addJob(Command *cmd, bool isStopped = false);
 
     int addJob(int pid, int jobId, Command *cmd, bool isStopped = false);
+
     int addJob(int jobId, Command *cmd, bool isStopped = false);
 
     void printJobsList();
@@ -304,6 +306,7 @@ class SmallShell {
 private:
     // TODO: Add your data members
     SmallShell();
+
     JobsList jobs;
     int pid = 0;
     string prompt = "smash> ";
@@ -312,9 +315,13 @@ private:
     int fgPid = 0;
 public:
     const string &getLastDir() const;
+
     const string &getCurrDir() const;
+
     void setCurrDir(string currDir);
+
     void setLastDir(string lastDir);
+
     Command *CreateCommand(const char *cmd_line);
 
     void setFgPid(int fgPid);

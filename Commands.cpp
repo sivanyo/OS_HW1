@@ -129,7 +129,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     } else if (command.find("bg") == 0) {
 
     } else if (command.find("quit") == 0) {
-
+        return new QuitCommand(cmd_line);
         /*
          * This part should include certain boolean flags for special commands (maybe should be above internal commands ifs)
          */
@@ -383,12 +383,12 @@ void ListDirectoryFilesCommand::execute() {
     }
     free(namelist);
 
-    sort(fileList.begin(), fileList.end(), [](const auto &lhs, const auto &rhs) {
-        const auto result = mismatch(lhs.cbegin(), lhs.cend(), rhs.cbegin(), rhs.cend(),
-                                     [](const unsigned char lhs, const unsigned char rhs) { return tolower(lhs) == tolower(rhs); });
-
-        return result.second != rhs.cend() && (result.first == lhs.cend() || tolower(*result.first) < tolower(*result.second));
-    });
+//    sort(fileList.begin(), fileList.end(), [](const auto &lhs, const auto &rhs) {
+//        const auto result = mismatch(lhs.cbegin(), lhs.cend(), rhs.cbegin(), rhs.cend(),
+//                                     [](const unsigned char lhs, const unsigned char rhs) { return tolower(lhs) == tolower(rhs); });
+//
+//        return result.second != rhs.cend() && (result.first == lhs.cend() || tolower(*result.first) < tolower(*result.second));
+//    });
     for (const auto &a : fileList) {
         std::cout << a << endl;
     }
@@ -606,16 +606,19 @@ void ExternalCommand::execute() {
     } else {
         // parent
         smash.getJobsReference()->removeFinishedJobs();
-        smash.setFgPid(pid);
         int nJobId = smash.getJobsReference()->addJob(pid, this, false);
         if (!isBackground()) {
+            smash.setFgPid(pid);
             std::cout << "waiting for job: " << nJobId << " with pid: " << pid << std::endl;
-            waitpid(pid, nullptr, 0);
-            smash.getJobsReference()->removeJobById(nJobId);
+            waitpid(pid, nullptr, WUNTRACED);
+            if (!smash.getJobs().getJobsMap().find(nJobId)->second.isStopped()) {
+                // The process was not stopped while it was running, so it is safe to remove it from the jobs list
+                smash.getJobsReference()->removeJobById(nJobId);
+            }
+            smash.getJobsReference()->updateLastStoppedJobId();
+            smash.setFgPid(0);
         }
     }
-
-
 }
 
 void BackgroundCommand::execute() {
@@ -702,7 +705,7 @@ void ForegroundCommand::execute() {
         perror("smash error: kill failed");
         return;
     }
-    waitpid(jobPid, nullptr, 0);
+    waitpid(jobPid, nullptr, WUNTRACED);
     smash.getJobsReference()->removeJobById(jobID);
 }
 
@@ -725,7 +728,7 @@ void KillCommand::execute() {
     } else {
         signumArg = std::stoi(arguments[0]);
         jobId = std::stoi(arguments[1]);
-        if (signumArg >= 0 ) {
+        if (signumArg >= 0) {
             // An invalid signal was provided
             cout << "smash error: kill: invalid arguments" << endl;
             return;
@@ -757,20 +760,20 @@ QuitCommand::QuitCommand(const char *cmdLine) : BuiltInCommand(cmdLine) {
 
 void QuitCommand::execute() {
     // need to ignore if there were too many args
-    if(arguments[0] == "kill"){
+    if (!arguments.empty() && arguments[0] == "kill") {
         // we need to delete all the jobs from the job list
-        cout << "smash: sending SIGKILL signal to " <<smash.getJobs().getJobsMap().size()<<" jobs:" << endl;
-        for(auto it = smash.getJobs().getJobsMap().begin() ; it != smash.getJobs().getJobsMap().end() ; it++){
+        cout << "smash: sending SIGKILL signal to " << smash.getJobs().getJobsMap().size() << " jobs:" << endl;
+        for (auto it = smash.getJobs().getJobsMap().begin(); it != smash.getJobs().getJobsMap().end(); it++) {
             int jobPid = it->second.getPid();
             string cmdLine = it->second.getCommandLine();
             cout << jobPid << ": " << cmdLine << endl;
-            if(kill(jobPid, SIGKILL) == -1){
+            if (kill(jobPid, SIGKILL) == -1) {
                 perror("smash error: kill failed");
             }
         }
     }
     // need to exit smash
-    gotQuit=true;
+    gotQuit = true;
 }
 
 
