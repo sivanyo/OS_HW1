@@ -219,6 +219,14 @@ void SmallShell::setJobs(JobsList &jobs) {
     SmallShell::jobs = jobs;
 }
 
+int SmallShell::getFgPid() const {
+    return fgPid;
+}
+
+void SmallShell::setFgPid(int fgPid) {
+    SmallShell::fgPid = fgPid;
+}
+
 //int SmallShell::getJobsListSize() {
 //    return smash.jobs.;
 //}
@@ -598,6 +606,7 @@ void ExternalCommand::execute() {
     } else {
         // parent
         smash.getJobsReference()->removeFinishedJobs();
+        smash.setFgPid(pid);
         int nJobId = smash.getJobsReference()->addJob(pid, this, false);
         if (!isBackground()) {
             std::cout << "waiting for job: " << nJobId << " with pid: " << pid << std::endl;

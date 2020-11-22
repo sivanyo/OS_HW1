@@ -309,6 +309,7 @@ private:
     string prompt = "smash> ";
     string last_dir = "";
     string curr_dir = "";
+    int fgPid = 0;
 public:
     const string &getLastDir() const;
     const string &getCurrDir() const;
@@ -316,6 +317,9 @@ public:
     void setLastDir(string lastDir);
     Command *CreateCommand(const char *cmd_line);
 
+    void setFgPid(int fgPid);
+
+    int getFgPid() const;
 
     SmallShell(SmallShell const &) = delete; // disable copy ctor
     void operator=(SmallShell const &) = delete; // disable = operator

@@ -8,7 +8,19 @@ extern SmallShell &smash;
 using namespace std;
 
 void ctrlZHandler(int sig_num) {
-    // TODO: Add your implementation
+    signal(SIGSTP, &ctrlCHandler);
+    std::cout << "smash: got ctrl-Z" << std::endl;
+    int fgPid = smash.getFgPid();
+    if(fgPid != 0){
+        int jobID = smash.getJobsReference()->getJobIdByProcessId(fgPid);
+        smash.getJobs().getJobsMap().find(jobID)->second.setStopped(true);
+        if(kill(fgPid, SIGSTP) == -1){
+            perror("smash error: kill failed");
+            return;
+        }
+    }
+    std::cout << "smash: process " << fgPid << " was stopped" << std::endl;
+
 }
 
 void ctrlCHandler(int sig_num) {
