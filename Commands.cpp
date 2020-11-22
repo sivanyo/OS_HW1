@@ -12,6 +12,7 @@
 #include "Utils.h"
 
 extern SmallShell &smash;
+bool gotQuit = false;
 
 using namespace std;
 
@@ -740,3 +741,28 @@ void KillCommand::execute() {
 KillCommand::KillCommand(const char *cmdLine) : BuiltInCommand(cmdLine) {
 
 }
+
+QuitCommand::QuitCommand(const char *cmdLine) : BuiltInCommand(cmdLine) {
+
+}
+
+void QuitCommand::execute() {
+    // need to ignore if there were too many args
+    if(arguments[0] == "kill"){
+        // we need to delete all the jobs from the job list
+        cout << "smash: sending SIGKILL signal to " <<smash.getJobs().getJobsMap().size()<<" jobs:" << endl;
+        for(auto it = smash.getJobs().getJobsMap().begin() ; it != smash.getJobs().getJobsMap().end() ; it++){
+            int jobPid = it->second.getPid();
+            string cmdLine = it->second.getCommandLine();
+            cout << jobPid << ": " << cmdLine << endl;
+            if(kill(jobPid, SIGKILL) == -1){
+                perror("smash error: kill failed");
+            }
+        }
+    }
+    // need to exit smash
+    gotQuit=true;
+}
+
+
+

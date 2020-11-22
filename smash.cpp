@@ -6,6 +6,7 @@
 #include "signals.h"
 
 SmallShell &smash = SmallShell::getInstance();
+extern bool gotQuit;
 
 // TODO: remove this before sending
 #pragma clang diagnostic push
@@ -21,7 +22,7 @@ int main(int argc, char *argv[]) {
     //TODO: setup sig alarm handler
 
 
-    while (true) {
+    while (true && !gotQuit) {
         std::cout << smash.GetPrompt();
         std::string cmd_line;
         std::getline(std::cin, cmd_line);
