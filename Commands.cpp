@@ -102,16 +102,13 @@ SmallShell::~SmallShell() {
 * Creates and returns a pointer to Command class which matches the given command line (cmd_line)
 */
 Command *SmallShell::CreateCommand(const char *cmd_line) {
+    // TODO: check if parsing fails for commands with a space in front of them and fix
     string command = string(cmd_line);
     bool background = _isBackgroundComamnd(cmd_line);
-    // TODO: redirect output shouldn't become false in case we have 2 arrows
     bool redirectOutput = Utils::isRedirectionCommand(command);
     bool redirectAppend = Utils::isRedirectionCommandWithAppend(command);
     bool pipe = Utils::isPipeout(command);
     bool pipeErr = Utils::isPipeErr(command);
-
-    // TODO: add command to detect pipeline
-    // TODO: add command to detect & sign
     if (redirectOutput || redirectAppend) {
         bool append = false;
         if (redirectAppend) {
@@ -866,7 +863,6 @@ void RedirectionCommand::execute() {
 
 }
 
-
 PipeCommand::PipeCommand(const char *cmd_line, bool err) : Command(cmd_line), err(err) {
 
 }
@@ -886,9 +882,7 @@ void PipeCommand::execute() {
     char buff[6];
     pipe(my_pipe);
 
-    if(fork() == 0){
+    if (fork() == 0) {
         close(my_pipe[0]);
     }
-
-
 }
