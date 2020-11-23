@@ -77,8 +77,10 @@ public:
 
 class RedirectionCommand : public Command {
     // TODO: Add your data members
+    bool append;
+    string filename;
 public:
-    explicit RedirectionCommand(const char *cmd_line);
+    explicit RedirectionCommand(const char *cmd_line, bool append);
 
     virtual ~RedirectionCommand() {}
 

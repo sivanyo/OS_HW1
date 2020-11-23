@@ -8,6 +8,7 @@
 #include <sstream>
 #include <sys/wait.h>
 #include <iomanip>
+#include <sys/fcntl.h>
 #include "Commands.h"
 #include "Utils.h"
 
@@ -103,6 +104,7 @@ SmallShell::~SmallShell() {
 Command *SmallShell::CreateCommand(const char *cmd_line) {
     string command = string(cmd_line);
     bool background = _isBackgroundComamnd(cmd_line);
+    // TODO: redirect output shouldn't become false in case we have 2 arrows
     bool redirectOutput = Utils::isRedirectionCommand(command);
     bool redirectAppend = Utils::isRedirectionCommandWithAppend(command);
     bool pipe = Utils::isPipe(command);
@@ -141,8 +143,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
          */
     } else if (command.find("mor") == 0) {
         return new MorCommand("sleep 50 &");
-    }
-    else {
+    } else {
         if (command.empty()) {
             return nullptr;
         }
@@ -799,18 +800,27 @@ void QuitCommand::execute() {
 }
 
 
+RedirectionCommand::RedirectionCommand(const char *cmd_line, bool append) : Command(cmd_line), append(append) {
 
-RedirectionCommand::RedirectionCommand(const char *cmd_line, bool append) : Command(cmd_line) {
-    append = append;
-    filename = arguments[1];
 }
 
 MorCommand::MorCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
 }
 
 void RedirectionCommand::execute() {
+    if (arguments.size() > 1) {
+        filename = arguments[1];
+    } else {
+        std::cout << "smash error: invalid argument" << std::endl;
+        return;
+    }
     // built in or external
-    Command *cmd = smash.CreateCommand(commandLine);
+    // original = cat mor.txt > test.txt
+    // originalApped = cat mor.txt >> test.txt
+    // grep -v -h -l test >> test.txt
+    // cmdline = cat mor.txt
+    // Utils::split append(cmdline)
+    Command *cmd = smash.CreateCommand("showpid");
     int result;
     int dup_res = dup(1);
     if (dup_res == -1) {
@@ -823,10 +833,10 @@ void RedirectionCommand::execute() {
         delete cmd;
         return;
     }
-    if(append) {
-        result = open(this->filename, O_WRONLY | O_CREATE | O_APPEND, 0666);
+    if (append) {
+        result = open(this->filename.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0666);
     } else {
-        result = open(this->filename, O_WRONLY | O_CREATE | O_TRUNC, 0666);
+        result = open(this->filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
     }
     if (result == -1) {
         perror("smash error: open failed");
@@ -846,8 +856,6 @@ void RedirectionCommand::execute() {
         perror("smash error: close failed");
     }
     delete cmd;
-
-}
 
 }
 
