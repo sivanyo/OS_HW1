@@ -86,7 +86,7 @@ void _removeBackgroundSign(char *cmd_line) {
     cmd_line[str.find_last_not_of(WHITESPACE, idx) + 1] = 0;
 }
 
-// TODO: Add your implementation for classes in Commands.h 
+// TODO: Add your implementation for classes in Commands.h
 
 SmallShell::SmallShell() : jobs(JobsList()) {
 // TODO: add your implementation
@@ -110,7 +110,13 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
 
     // TODO: add command to detect pipeline
     // TODO: add command to detect & sign
-    if (command.find("chprompt") == 0) {
+    if (redirectOutput) {
+        bool append = false;
+        if (redirectAppend) {
+            append = true;
+        }
+        return new RedirectionCommand(cmd_line, append);
+    } else if (command.find("chprompt") == 0) {
         return new ChangePromptCommand(cmd_line);
     } else if (command.find("ls") == 0) {
         return new ListDirectoryFilesCommand(cmd_line);
@@ -777,4 +783,49 @@ void QuitCommand::execute() {
 }
 
 
+RedirectionCommand::RedirectionCommand(const char *cmd_line, bool append) : Command(cmd_line) {
+    append = append;
+    filename = arguments[1];
+}
+
+void RedirectionCommand::execute() {
+    // built in or external
+    Command *cmd = smash.CreateCommand(commandLine);
+    int result;
+    int dup_res = dup(1);
+    if (dup_res == -1) {
+        perror("smash error: dup failed");
+        delete cmd;
+        return;
+    }
+    if (close(1) == -1) {
+        perror("smash error: close failed");
+        delete cmd;
+        return;
+    }
+    if(append) {
+        result = open(this->filename, O_WRONLY | O_CREATE | O_APPEND, 0666);
+    } else {
+        result = open(this->filename, O_WRONLY | O_CREATE | O_TRUNC, 0666);
+    }
+    if (result == -1) {
+        perror("smash error: open failed");
+        delete cmd;
+        return;
+    }
+    smash.executeCommand(cmd->getCommandLine());
+    if (close(1) == -1) {
+        perror("smash error: close failed");
+        delete cmd;
+        return;
+    }
+    if (dup(dup_res) == -1) {
+        perror("smash error: dup failed");
+    }
+    if (close(dup_res) == -1) {
+        perror("smash error: close failed");
+    }
+    delete cmd;
+
+}
 
