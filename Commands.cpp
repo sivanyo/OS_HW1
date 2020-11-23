@@ -112,7 +112,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
 
     // TODO: add command to detect pipeline
     // TODO: add command to detect & sign
-    if (redirectOutput) {
+    if (redirectOutput || redirectAppend) {
         bool append = false;
         if (redirectAppend) {
             append = true;
@@ -808,9 +808,9 @@ MorCommand::MorCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
 }
 
 void RedirectionCommand::execute() {
-    if (arguments.size() > 1) {
-        filename = arguments[1];
-    } else {
+    vector<string> input = Utils::getBreakedCmd(commandLine);
+    if(input[1] == ""){
+        // dont get file name
         std::cout << "smash error: invalid argument" << std::endl;
         return;
     }
@@ -820,7 +820,7 @@ void RedirectionCommand::execute() {
     // grep -v -h -l test >> test.txt
     // cmdline = cat mor.txt
     // Utils::split append(cmdline)
-    Command *cmd = smash.CreateCommand("showpid");
+    Command *cmd = smash.CreateCommand(input[0].c_str());
     int result;
     int dup_res = dup(1);
     if (dup_res == -1) {

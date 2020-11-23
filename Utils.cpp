@@ -98,3 +98,26 @@ bool Utils::isInteger(const std::string & s)
 void Utils::printCommandLineFromJob(string cmdline, int pid) {
     std::cout << cmdline << " : " << pid << std::endl;
 }
+
+vector<string> Utils::getBreakedCmd(const string& s) {
+    vector<string> sentence = stringToWords(s);
+    vector<string> result;
+    bool after = false;
+    string cmd="";
+    string filename="";
+    for(int i = 0 ; i < sentence.size() ; i++){
+        if(sentence[i] == "<" || sentence[i] == "<<"){
+            after= true;
+            continue;
+        }
+        if(!after){
+            cmd.append(" "+ sentence[i]);
+        }
+        else{
+            filename.append(sentence[i]);
+        }
+    }
+    result.push_back(cmd);
+    result.push_back(filename);
+    return result;
+}

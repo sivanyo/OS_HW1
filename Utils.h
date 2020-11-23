@@ -25,6 +25,8 @@ public:
     static bool isInteger(const std::string & s);
 
     static void printCommandLineFromJob(string cmdline, int pid);
+
+    static vector<string> getBreakedCmd(const string& s);
 };
 
 
