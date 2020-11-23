@@ -2,8 +2,12 @@
 // Created by 1912m on 18/11/2020.
 //
 
+#include <iostream>
 #include <unistd.h>
 #include "Utils.h"
+
+using std::cout;
+using std::endl;
 
 vector<string> Utils::stringToWords(const string& s) {
     vector<string> result;
@@ -89,4 +93,8 @@ bool Utils::isInteger(const std::string & s)
     strtol(s.c_str(), &p, 10);
 
     return (*p == 0);
+}
+
+void Utils::printCommandLineFromJob(string cmdline, int pid) {
+    std::cout << cmdline << " : " << pid << std::endl;
 }

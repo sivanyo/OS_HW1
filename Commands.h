@@ -124,6 +124,15 @@ public:
     void execute() override;
 };
 
+class MorCommand : public BuiltInCommand {
+public:
+    explicit MorCommand(const char *cmd_line);
+
+    virtual ~MorCommand() {}
+
+    void execute() override;
+};
+
 class JobsList;
 
 class QuitCommand : public BuiltInCommand {

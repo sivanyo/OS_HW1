@@ -23,6 +23,8 @@ public:
     static string GetCurrentWorkingDirectoryString();
 
     static bool isInteger(const std::string & s);
+
+    static void printCommandLineFromJob(string cmdline, int pid);
 };
 
 
