@@ -107,17 +107,23 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     // TODO: redirect output shouldn't become false in case we have 2 arrows
     bool redirectOutput = Utils::isRedirectionCommand(command);
     bool redirectAppend = Utils::isRedirectionCommandWithAppend(command);
-    bool pipe = Utils::isPipe(command);
-    bool pipeRedirect = Utils::isPipeAndRedirect(command);
+    bool pipe = Utils::isPipeout(command);
+    bool pipeErr = Utils::isPipeErr(command);
 
     // TODO: add command to detect pipeline
     // TODO: add command to detect & sign
-    if (redirectOutput) {
+    if (redirectOutput || redirectAppend) {
         bool append = false;
         if (redirectAppend) {
             append = true;
         }
         return new RedirectionCommand(cmd_line, append);
+    } else if (pipe || pipeErr) {
+        bool err = false;
+        if (pipeErr) {
+            err = true;
+        }
+        return new PipeCommand(cmd_line, err);
     } else if (command.find("chprompt") == 0) {
         return new ChangePromptCommand(cmd_line);
     } else if (command.find("ls") == 0) {
@@ -804,9 +810,13 @@ RedirectionCommand::RedirectionCommand(const char *cmd_line, bool append) : Comm
 }
 
 void RedirectionCommand::execute() {
-    if (arguments.size() > 1) {
-        filename = arguments[1];
-    } else {
+    vector<string> input = Utils::getBreakedCmdRedirection(commandLine, "<", "<<");
+    if (input.size() != 2) {
+        std::cout << "smash error: invalid argument" << std::endl;
+        return;
+    }
+    if (input[1].empty() || input[0].empty()) {
+        // dont get file name or cmd
         std::cout << "smash error: invalid argument" << std::endl;
         return;
     }
@@ -816,7 +826,8 @@ void RedirectionCommand::execute() {
     // grep -v -h -l test >> test.txt
     // cmdline = cat mor.txt
     // Utils::split append(cmdline)
-    Command *cmd = smash.CreateCommand("showpid");
+    Command *cmd = smash.CreateCommand(input[0].c_str());
+    string filename = input[1];
     int result;
     int dup_res = dup(1);
     if (dup_res == -1) {
@@ -830,9 +841,9 @@ void RedirectionCommand::execute() {
         return;
     }
     if (append) {
-        result = open(this->filename.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0666);
+        result = open(filename.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0666);
     } else {
-        result = open(this->filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        result = open(filename.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
     }
     if (result == -1) {
         perror("smash error: open failed");
@@ -852,5 +863,32 @@ void RedirectionCommand::execute() {
         perror("smash error: close failed");
     }
     delete cmd;
+
+}
+
+
+PipeCommand::PipeCommand(const char *cmd_line, bool err) : Command(cmd_line), err(err) {
+
+}
+
+void PipeCommand::execute() {
+    vector<string> input = Utils::getBreakedCmdRedirection(commandLine, "|", "|&");
+    if (input.size() != 2) {
+        std::cout << "smash error: invalid argument" << std::endl;
+        return;
+    }
+    if (input[1].empty() || input[0].empty()) {
+        // dont get cmd
+        std::cout << "smash error: invalid argument" << std::endl;
+        return;
+    }
+    int my_pipe[2];
+    char buff[6];
+    pipe(my_pipe);
+
+    if(fork() == 0){
+        close(my_pipe[0]);
+    }
+
 
 }

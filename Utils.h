@@ -17,14 +17,16 @@ public:
     static bool isBackgroundCommand(const string& s);
     static bool isRedirectionCommand(const string& s);
     static bool isRedirectionCommandWithAppend(const string& s);
-    static bool isPipe(const string& s);
-    static bool isPipeAndRedirect(const string& s);
+    static bool isPipeout(const string& s);
+    static bool isPipeErr(const string& s);
 
     static string GetCurrentWorkingDirectoryString();
 
     static bool isInteger(const std::string & s);
 
     static void printCommandLineFromJob(string cmdline, int pid);
+
+    static vector<string> getBreakedCmdRedirection(const string& s, const string& s1, const string& s2);
 };
 
 

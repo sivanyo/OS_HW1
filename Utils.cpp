@@ -54,7 +54,7 @@ bool Utils::isRedirectionCommandWithAppend(const string &s) {
     return false;
 }
 
-bool Utils::isPipe(const string &s) {
+bool Utils::isPipeout(const string &s) {
     vector<string> res = stringToWords(s);
     for(int i = 0 ; i < res.size() ; i++){
         if(res[i] == "|"){
@@ -64,7 +64,7 @@ bool Utils::isPipe(const string &s) {
     return false;
 }
 
-bool Utils::isPipeAndRedirect(const string &s) {
+bool Utils::isPipeErr(const string &s) {
     vector<string> res = stringToWords(s);
     for(int i = 0 ; i < res.size() ; i++){
         if(res[i] == "|&"){
@@ -97,4 +97,27 @@ bool Utils::isInteger(const std::string & s)
 
 void Utils::printCommandLineFromJob(string cmdline, int pid) {
     std::cout << cmdline << " : " << pid << std::endl;
+}
+
+vector<string> Utils::getBreakedCmdRedirection(const string& s, const string& s1, const string& s2) {
+    vector<string> sentence = stringToWords(s);
+    vector<string> result;
+    bool after = false;
+    string cmd="";
+    string filename="";
+    for(int i = 0 ; i < sentence.size() ; i++){
+        if(sentence[i] == s1 || sentence[i] == s2){
+            after= true;
+            continue;
+        }
+        if(!after){
+            cmd.append(" "+ sentence[i]);
+        }
+        else{
+            filename.append(sentence[i]);
+        }
+    }
+    result.push_back(cmd);
+    result.push_back(filename);
+    return result;
 }

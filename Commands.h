@@ -66,9 +66,10 @@ public:
 };
 
 class PipeCommand : public Command {
+    bool err = false;
     // TODO: Add your data members
 public:
-    PipeCommand(const char *cmd_line);
+    PipeCommand(const char *cmd_line, bool err);
 
     virtual ~PipeCommand() {}
 
@@ -78,7 +79,7 @@ public:
 class RedirectionCommand : public Command {
     // TODO: Add your data members
     bool append;
-    string filename;
+
 public:
     explicit RedirectionCommand(const char *cmd_line, bool append);
 
