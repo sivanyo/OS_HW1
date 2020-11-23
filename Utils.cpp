@@ -54,7 +54,7 @@ bool Utils::isRedirectionCommandWithAppend(const string &s) {
     return false;
 }
 
-bool Utils::isPipe(const string &s) {
+bool Utils::isPipeout(const string &s) {
     vector<string> res = stringToWords(s);
     for(int i = 0 ; i < res.size() ; i++){
         if(res[i] == "|"){
@@ -64,7 +64,7 @@ bool Utils::isPipe(const string &s) {
     return false;
 }
 
-bool Utils::isPipeAndRedirect(const string &s) {
+bool Utils::isPipeErr(const string &s) {
     vector<string> res = stringToWords(s);
     for(int i = 0 ; i < res.size() ; i++){
         if(res[i] == "|&"){

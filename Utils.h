@@ -17,8 +17,8 @@ public:
     static bool isBackgroundCommand(const string& s);
     static bool isRedirectionCommand(const string& s);
     static bool isRedirectionCommandWithAppend(const string& s);
-    static bool isPipe(const string& s);
-    static bool isPipeAndRedirect(const string& s);
+    static bool isPipeout(const string& s);
+    static bool isPipeErr(const string& s);
 
     static string GetCurrentWorkingDirectoryString();
 
