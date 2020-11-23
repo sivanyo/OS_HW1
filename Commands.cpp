@@ -808,8 +808,12 @@ MorCommand::MorCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
 }
 
 void RedirectionCommand::execute() {
-    vector<string> input = Utils::getBreakedCmd(commandLine);
-    if(input[1] == ""){
+    vector<string> input = Utils::getBreakedCmdRedirection(commandLine, "<", "<<");
+    if(input.empty()){
+        std::cout << "smash error: invalid argument" << std::endl;
+        return;
+    }
+    if(input[1].empty()){
         // dont get file name
         std::cout << "smash error: invalid argument" << std::endl;
         return;

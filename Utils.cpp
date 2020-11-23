@@ -99,14 +99,14 @@ void Utils::printCommandLineFromJob(string cmdline, int pid) {
     std::cout << cmdline << " : " << pid << std::endl;
 }
 
-vector<string> Utils::getBreakedCmd(const string& s) {
+vector<string> Utils::getBreakedCmdRedirection(const string& s, const string& s1, const string& s2) {
     vector<string> sentence = stringToWords(s);
     vector<string> result;
     bool after = false;
     string cmd="";
     string filename="";
     for(int i = 0 ; i < sentence.size() ; i++){
-        if(sentence[i] == "<" || sentence[i] == "<<"){
+        if(sentence[i] == s1 || sentence[i] == s2){
             after= true;
             continue;
         }

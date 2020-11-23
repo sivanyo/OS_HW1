@@ -26,7 +26,7 @@ public:
 
     static void printCommandLineFromJob(string cmdline, int pid);
 
-    static vector<string> getBreakedCmd(const string& s);
+    static vector<string> getBreakedCmdRedirection(const string& s, const string& s1, const string& s2);
 };
 
 
