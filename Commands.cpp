@@ -135,14 +135,12 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     } else if (command.find("fg") == 0) {
         return new ForegroundCommand(cmd_line);
     } else if (command.find("bg") == 0) {
-
+        return new BackgroundCommand(cmd_line);
     } else if (command.find("quit") == 0) {
         return new QuitCommand(cmd_line);
         /*
          * This part should include certain boolean flags for special commands (maybe should be above internal commands ifs)
          */
-    } else if (command.find("mor") == 0) {
-        return new MorCommand("sleep 50 &");
     } else {
         if (command.empty()) {
             return nullptr;
@@ -392,13 +390,6 @@ void ListDirectoryFilesCommand::execute() {
         }
     }
     free(namelist);
-
-//    sort(fileList.begin(), fileList.end(), [](const auto &lhs, const auto &rhs) {
-//        const auto result = mismatch(lhs.cbegin(), lhs.cend(), rhs.cbegin(), rhs.cend(),
-//                                     [](const unsigned char lhs, const unsigned char rhs) { return tolower(lhs) == tolower(rhs); });
-//
-//        return result.second != rhs.cend() && (result.first == lhs.cend() || tolower(*result.first) < tolower(*result.second));
-//    });
     for (const auto &a : fileList) {
         std::cout << a << endl;
     }
@@ -437,7 +428,6 @@ void JobsList::setCurrentMaxStoppedJobId(int currentMaxStoppedPid) {
 }
 
 int JobsList::addJob(int pid, Command *cmd, bool isStopped) {
-    // TODO: this part doesn't really add a stopped status to the job
     int nJobId = getCurrentMaxJobId();
     nJobId += 1;
     JobEntry nJob(nJobId, pid, cmd);
@@ -456,7 +446,10 @@ void JobsList::removeJobById(int jobId) {
     JobEntry job = jobsMap.find(jobId)->second;
     job.deleteCommand();
     jobsMap.erase(jobId);
-    setCurrentMaxJobId(getMaxKeyInMap());
+    std::cout << "removed old jobs, updating max job id" << std::endl;
+    int maxJob = getMaxKeyInMap();
+    std::cout << "current max job id is: " << maxJob << std::endl;
+    setCurrentMaxJobId(maxJob);
 }
 
 const map<int, JobsList::JobEntry> &JobsList::getJobsMap() const {
@@ -640,13 +633,14 @@ void BackgroundCommand::execute() {
     }
     int jobID = 0;
     if (arguments.size() == 1) {
-        std::size_t *num = nullptr;
-        jobID = std::stoi(arguments[0], num);
-        if (*num != arguments[0].size()) {
-            // the argument is not consist of numeric characters
+        if (!Utils::isInteger(arguments[0])) {
+            // the arguments are not numeric characters
             cout << "smash error: bg: invalid arguments" << endl;
             return;
-        } else if (smash.getJobs().getJobsMap().find(jobID) == smash.getJobs().getJobsMap().end()) {
+        } else {
+            jobID = std::stoi(arguments[0]);
+        }
+        if (smash.getJobs().getJobsMap().find(jobID) == smash.getJobs().getJobsMap().end()) {
             // there is no such job in the map
             cout << "smash error: bg: job-id " << jobID << " does not exist" << endl;
             return;
@@ -663,18 +657,17 @@ void BackgroundCommand::execute() {
             int pid = smash.getJobs().getJobsMap().find(jobID)->second.getPid();
             Utils::printCommandLineFromJob(cmdLine, pid);
             if (kill(pid, SIGCONT) == -1) {
-                // syscall falied
+                // syscall failed
                 perror("smash error: kill failed");
                 return;
             }
+            std::cout << "Attempting to change job " << jobID << " to status continue" << std::endl;
             smash.getJobs().getJobsMap().at(jobID).setStopped(false);
             return;
         }
     } else {
         // there is no argument, need to get the last job that stopped
         jobID = smash.getJobs().getCurrentMaxStoppedJobId();
-        smash.getJobsReference()->updateLastStoppedJobId();
-
         if (jobID == 0) {
             cout << "smash error: bg: there is no stopped jobs to resume" << endl;
             return;
@@ -684,11 +677,12 @@ void BackgroundCommand::execute() {
     int pid = smash.getJobs().getJobsMap().find(jobID)->second.getPid();
     Utils::printCommandLineFromJob(cmdLine, pid);
     if (kill(pid, SIGCONT) == -1) {
-        // syscall falied
+        // syscall failed
         perror("smash error: kill failed");
         return;
     }
     smash.getJobs().getJobsMap().at(jobID).setStopped(false);
+    smash.getJobsReference()->updateLastStoppedJobId();
 }
 
 BackgroundCommand::BackgroundCommand(const char *cmdLine) : BuiltInCommand(cmdLine) {
@@ -701,7 +695,7 @@ void ForegroundCommand::execute() {
         return;
     }
     int jobID;
-    if (arguments.size() == 0) {
+    if (arguments.empty()) {
         // no job id passed
         if (smash.getJobs().getJobsMap().size() == 0) {
             // no args anf no jobs - error
@@ -724,12 +718,17 @@ void ForegroundCommand::execute() {
     int jobPid = smash.getJobs().getJobsMap().find(jobID)->second.getPid();
     cout << cmdLine << " : " << jobPid << endl;
     smash.getJobs().getJobsMap().find(jobID)->second.setBackground(false);
-    if (killpg(jobPid, SIGCONT) == -1) {
+    if (kill(jobPid, SIGCONT) == -1) {
         perror("smash error: kill failed");
         return;
     }
     waitpid(jobPid, nullptr, WUNTRACED);
-    smash.getJobsReference()->removeJobById(jobID);
+    if (!smash.getJobs().getJobsMap().find(jobID)->second.isStopped()) {
+        // The process was not stopped while it was running, so it is safe to remove it from the jobs list
+        smash.getJobsReference()->removeJobById(jobID);
+    }
+    smash.getJobsReference()->updateLastStoppedJobId();
+    smash.setFgPid(0);
 }
 
 ForegroundCommand::ForegroundCommand(const char *cmdLine) : BuiltInCommand(cmdLine) {
@@ -804,9 +803,6 @@ RedirectionCommand::RedirectionCommand(const char *cmd_line, bool append) : Comm
 
 }
 
-MorCommand::MorCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
-}
-
 void RedirectionCommand::execute() {
     if (arguments.size() > 1) {
         filename = arguments[1];
@@ -857,43 +853,4 @@ void RedirectionCommand::execute() {
     }
     delete cmd;
 
-}
-
-void MorCommand::execute() {
-    int pid = fork();
-    if (pid == -1) {
-        perror("smash error: fork failed");
-        return;
-    } else if (pid == 0) {
-        setpgrp();
-        //std::cout << "this is process " << getpid() << "with forked pid: " << pid << "running an external command" << endl;
-
-        char fullArgs[COMMAND_ARGS_MAX_LENGTH] = {0};
-        strcpy(fullArgs, commandLine);
-        _trim(fullArgs);
-        _removeBackgroundSign(fullArgs);
-        char *const argsArray[] = {(char *) "/bin/bash", (char *) "-c", fullArgs, nullptr};
-        int result = execv("/bin/bash", argsArray);
-        if (result == -1) {
-            perror("smash error: execv failed");
-            return;
-        }
-    } else {
-        // parent
-        smash.getJobsReference()->removeFinishedJobs();
-        int nJobId = smash.getJobsReference()->addJob(pid, this, true);
-        kill(pid, SIGSTOP);
-        smash.getJobsReference()->setCurrentMaxJobId(1);
-//        if (!isBackground()) {
-//            smash.setFgPid(pid);
-//            std::cout << "waiting for job: " << nJobId << " with pid: " << pid << std::endl;
-//            waitpid(pid, nullptr, WUNTRACED);
-//            if (!smash.getJobs().getJobsMap().find(nJobId)->second.isStopped()) {
-//                // The process was not stopped while it was running, so it is safe to remove it from the jobs list
-//                smash.getJobsReference()->removeJobById(nJobId);
-//            }
-//            smash.getJobsReference()->updateLastStoppedJobId();
-//            smash.setFgPid(0);
-//        }
-    }
 }
