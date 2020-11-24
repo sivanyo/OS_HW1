@@ -870,21 +870,22 @@ void PipeCommand::execute() {
     if (err) {
         channel = 2;
     }
+    int saved1, saved2;
     // saving the dup res in prdeer to close the channel and then to open it
-    int saved = dup(channel);
-    if (saved == -1) {
-        perror("smash error: dup failed");
-        delete cmd1;
-        delete cmd2;
-        return;
-    }
+    //int saved = dup(channel);
+    //if (saved == -1) {
+    //    perror("smash error: dup failed");
+    //    delete cmd1;
+    //    delete cmd2;
+    //    return;
+    //}
     // close the channel in the FDT
-    if (close(channel) == -1) {
-        perror("smash error: close failed");
-        delete cmd1;
-        delete cmd2;
-        return;
-    }
+//    if(close(channel) == -1){
+//        perror("smash error: close failed");
+//        delete cmd1;
+//        delete cmd2;
+//        return;
+//    }
     int pidCmd1 = fork();
     if (pidCmd1 == -1) {
         perror("smash error: fork failed");
@@ -894,6 +895,7 @@ void PipeCommand::execute() {
     }
     if (pidCmd1 == 0) {
         // redirect std out or err
+        saved1=dup(channel);
         if (dup2(my_pipe[1], channel) == -1) {
             perror("smash error: dup failed");
             delete cmd1;
@@ -908,7 +910,7 @@ void PipeCommand::execute() {
             return;
         }
         smash.executeCommand(cmd1->getCommandLine());
-        exit(0);
+        //exit(0);
     } else {
         wait(nullptr);
         //waitpid(pidCmd1, nullptr, WUNTRACED);
@@ -924,6 +926,7 @@ void PipeCommand::execute() {
         return;
     }
     if (pidCmd2 == 0) {
+        saved2=dup(0);
         // redirect std out or err
         if (dup2(my_pipe[0], 0) == -1) {
             perror("smash error: dup failed");
@@ -938,7 +941,7 @@ void PipeCommand::execute() {
             return;
         }
         smash.executeCommand(cmd2->getCommandLine());
-        exit(0);
+        //exit(0);
     } else {
         //wait(nullptr);
     }
@@ -949,12 +952,20 @@ void PipeCommand::execute() {
         delete cmd2;
         return;
     }
-    if (dup2(saved, channel) == -1) {
+    if(dup2(saved1,channel) == -1){
         perror("smash error: dup failed");
         delete cmd1;
         delete cmd2;
         return;
     }
+
+    if(dup2(saved2,0) == -1){
+        perror("smash error: dup failed");
+        delete cmd1;
+        delete cmd2;
+        return;
+    }
+
     //waitpid(pidCmd2, nullptr, WUNTRACED);
     wait(nullptr);
     delete cmd1;
