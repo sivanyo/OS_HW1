@@ -347,7 +347,7 @@ void ChangeDirCommand::execute() {
         prev_dir = smash.getCurrDir();
         curr_dir = smash.getLastDir();
         int result = chdir(curr_dir.c_str());
-        if (result != 0) {
+        if (result == -1) {
             // chdir failed
             perror("smash error: chdir failed");
             return;
@@ -721,10 +721,12 @@ void ForegroundCommand::execute() {
     int jobPid = smash.getJobs().getJobsMap().find(jobID)->second.getPid();
     cout << cmdLine << " : " << jobPid << endl;
     smash.getJobs().getJobsMap().find(jobID)->second.setBackground(false);
+    smash.setFgPid(jobPid);
     if (kill(jobPid, SIGCONT) == -1) {
         perror("smash error: kill failed");
         return;
     }
+    smash.getJobs().getJobsMap().find(jobID)->second.setStopped(false);
     waitpid(jobPid, nullptr, WUNTRACED);
     if (!smash.getJobs().getJobsMap().find(jobID)->second.isStopped()) {
         // The process was not stopped while it was running, so it is safe to remove it from the jobs list
@@ -807,7 +809,7 @@ RedirectionCommand::RedirectionCommand(const char *cmd_line, bool append) : Comm
 }
 
 void RedirectionCommand::execute() {
-    vector<string> input = Utils::getBreakedCmdRedirection(commandLine, "<", "<<");
+    vector<string> input = Utils::getBreakedCmdRedirection(commandLine, ">", ">>");
     if (input.size() != 2) {
         std::cout << "smash error: invalid argument" << std::endl;
         return;
@@ -914,11 +916,13 @@ void PipeCommand::execute() {
             return;
         }
         smash.executeCommand(cmd1->getCommandLine());
-        //cmd1->execute();
         exit(0);
     } else {
         wait(nullptr);
+        //waitpid(pidCmd1, nullptr, WUNTRACED);
     }
+
+    //waitpid(pidCmd1, nullptr, WUNTRACED);
 
     int pidCmd2 = fork();
     if (pidCmd2 == -1) {
@@ -929,7 +933,7 @@ void PipeCommand::execute() {
     }
     if (pidCmd2 == 0) {
         // redirect std out or err
-        if (dup2(my_pipe[1], 0) == -1) {
+        if (dup2(my_pipe[0], 0) == -1) {
             perror("smash error: dup failed");
             delete cmd1;
             delete cmd2;
@@ -941,18 +945,19 @@ void PipeCommand::execute() {
             delete cmd2;
             return;
         }
-        smash.executeCommand(cmd12->getCommandLine());
+        smash.executeCommand(cmd2->getCommandLine());
         exit(0);
     } else {
-        wait(nullptr);
+        //wait(nullptr);
     }
     // back to normal channels
     if (close(my_pipe[0]) == -1 || close(my_pipe[1]) == -1) {
         perror("smash error: close failed");
         delete cmd1;
         delete cmd2;
+        return;
     }
-
+    //waitpid(pidCmd2, nullptr, WUNTRACED);
     wait(nullptr);
     delete cmd1;
     delete cmd2;
