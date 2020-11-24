@@ -103,21 +103,30 @@ vector<string> Utils::getBreakedCmdRedirection(const string& s, const string& s1
     vector<string> sentence = stringToWords(s);
     vector<string> result;
     bool after = false;
-    string cmd="";
-    string filename="";
+    string cmd1="";
+    string cmd2="";
     for(int i = 0 ; i < sentence.size() ; i++){
         if(sentence[i] == s1 || sentence[i] == s2){
             after= true;
             continue;
         }
         if(!after){
-            cmd.append(" "+ sentence[i]);
+            if (cmd1.empty()) {
+                cmd1.append(sentence[i]);
+            } else {
+                cmd1.append(" " + sentence[i]);
+            }
         }
         else{
-            filename.append(sentence[i]);
+            if (cmd2.empty()) {
+                cmd2.append(sentence[i]);
+            } else {
+                cmd2.append(" " + sentence[i]);
+            }
+
         }
     }
-    result.push_back(cmd);
-    result.push_back(filename);
+    result.push_back(cmd1);
+    result.push_back(cmd2);
     return result;
 }
