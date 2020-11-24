@@ -11,6 +11,7 @@ extern bool gotQuit;
 // TODO: remove this before sending
 #pragma clang diagnostic push
 #pragma ide diagnostic ignored "EndlessLoop"
+
 int main(int argc, char *argv[]) {
     if (signal(SIGTSTP, ctrlZHandler) == SIG_ERR) {
         perror("smash error: failed to set ctrl-Z handler");
@@ -19,8 +20,14 @@ int main(int argc, char *argv[]) {
         perror("smash error: failed to set ctrl-C handler");
     }
 
-    //TODO: setup sig alarm handler
+    struct sigaction act;
+    act.sa_handler = alarmHandler;
+    act.sa_flags = SA_RESTART;
 
+    int result = sigaction(SIGALRM, &act, 0);
+    if (result == -1) {
+        perror("smash error: failed to set alarm handler");
+    }
 
     while (true && !gotQuit) {
         std::cout << smash.GetPrompt();
@@ -30,4 +37,5 @@ int main(int argc, char *argv[]) {
     }
     return 0;
 }
+
 #pragma clang diagnostic pop

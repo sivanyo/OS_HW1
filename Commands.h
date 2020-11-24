@@ -174,6 +174,10 @@ public:
     void execute() override;
 };
 
+class AlarmList {
+
+};
+
 class JobsList {
 public:
     class JobEntry {
@@ -307,6 +311,15 @@ public:
     ListDirectoryFilesCommand(const char *cmd_line);
 
     virtual ~ListDirectoryFilesCommand() {}
+
+    void execute() override;
+};
+
+class TimeoutCommand : public BuiltInCommand {
+public:
+    TimeoutCommand(const char *cmd_line);
+
+    virtual ~TimeoutCommand() {}
 
     void execute() override;
 };

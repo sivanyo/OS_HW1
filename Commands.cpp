@@ -144,6 +144,8 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
         /*
          * This part should include certain boolean flags for special commands (maybe should be above internal commands ifs)
          */
+    } else if (command.find("timeout") == 0) {
+        return new TimeoutCommand(cmd_line);
     } else {
         if (command.empty()) {
             return nullptr;
@@ -151,22 +153,6 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
         // External command
         return new ExternalCommand(cmd_line, background);
     }
-
-//    } else if (command.find("showpid") == 0) {
-//        return
-//    }
-    // For example:
-/*
-  string cmd_s = string(cmd_line);
-  if (cmd_s.find("pwd") == 0) {
-    return new GetCurrDirCommand(cmd_line);
-  }
-  else if ...
-  .....
-  else {
-    return new ExternalCommand(cmd_line);
-  }
-  */
     return nullptr;
 }
 
@@ -816,12 +802,6 @@ void RedirectionCommand::execute() {
         std::cout << "smash error: invalid argument" << std::endl;
         return;
     }
-    // built in or external
-    // original = cat mor.txt > test.txt
-    // originalApped = cat mor.txt >> test.txt
-    // grep -v -h -l test >> test.txt
-    // cmdline = cat mor.txt
-    // Utils::split append(cmdline)
     Command *cmd = smash.CreateCommand(input[0].c_str());
     string filename = input[1];
     int result;
@@ -899,7 +879,7 @@ void PipeCommand::execute() {
         return;
     }
     // close the channel in the FDT
-    if(close(channel) == -1){
+    if (close(channel) == -1) {
         perror("smash error: close failed");
         delete cmd1;
         delete cmd2;
@@ -969,7 +949,7 @@ void PipeCommand::execute() {
         delete cmd2;
         return;
     }
-    if(dup2(saved, channel) == -1){
+    if (dup2(saved, channel) == -1) {
         perror("smash error: dup failed");
         delete cmd1;
         delete cmd2;
@@ -981,4 +961,31 @@ void PipeCommand::execute() {
     delete cmd2;
     // TODO:: think if for bg cmd the execute is enough, or i need to handle it in my code section
 
+}
+
+TimeoutCommand::TimeoutCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
+
+}
+
+void TimeoutCommand::execute() {
+    vector<string> brokenCommand = Utils::stringToWords(commandLine);
+    if (arguments.size() < 2) {
+        std::cout << "smash error: invalid argument" << std::endl;
+    }
+    int duration = 0;
+    if (!Utils::isInteger(arguments[0])) {
+        cout << "smash error: timeout: invalid arguments" << endl;
+    } else {
+        duration = std::atoi(arguments[0].c_str());
+    }
+    string realCommandString = "";
+    for (int i = 1; i < arguments.size(); ++i) {
+        if (realCommandString.empty()) {
+            realCommandString.append(arguments[i]);
+        } else {
+            realCommandString.append(" " + arguments[i]);
+        }
+    }
+    alarm(duration);
+    Command *realCommand = smash.CreateCommand(realCommandString.c_str());
 }
