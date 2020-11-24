@@ -913,7 +913,8 @@ void PipeCommand::execute() {
             delete cmd2;
             return;
         }
-        cmd1->execute();
+        smash.executeCommand(cmd1->getCommandLine());
+        //cmd1->execute();
         exit(0);
     } else {
         wait(nullptr);
@@ -940,7 +941,7 @@ void PipeCommand::execute() {
             delete cmd2;
             return;
         }
-        cmd2->execute();
+        smash.executeCommand(cmd12->getCommandLine());
         exit(0);
     } else {
         wait(nullptr);
@@ -950,10 +951,11 @@ void PipeCommand::execute() {
         perror("smash error: close failed");
         delete cmd1;
         delete cmd2;
-        return;
     }
 
     wait(nullptr);
+    delete cmd1;
+    delete cmd2;
     // TODO:: think if for bg cmd the execute is enough, or i need to handle it in my code section
 
 }
