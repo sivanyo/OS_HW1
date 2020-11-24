@@ -449,9 +449,7 @@ void JobsList::removeJobById(int jobId) {
     JobEntry job = jobsMap.find(jobId)->second;
     job.deleteCommand();
     jobsMap.erase(jobId);
-    std::cout << "removed old jobs, updating max job id" << std::endl;
     int maxJob = getMaxKeyInMap();
-    std::cout << "current max job id is: " << maxJob << std::endl;
     setCurrentMaxJobId(maxJob);
 }
 
@@ -616,7 +614,6 @@ void ExternalCommand::execute() {
         int nJobId = smash.getJobsReference()->addJob(pid, this, false);
         if (!isBackground()) {
             smash.setFgPid(pid);
-            std::cout << "waiting for job: " << nJobId << " with pid: " << pid << std::endl;
             waitpid(pid, nullptr, WUNTRACED);
             if (!smash.getJobs().getJobsMap().find(nJobId)->second.isStopped()) {
                 // The process was not stopped while it was running, so it is safe to remove it from the jobs list
