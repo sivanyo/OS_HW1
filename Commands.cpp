@@ -449,9 +449,9 @@ void JobsList::removeJobById(int jobId) {
     JobEntry job = jobsMap.find(jobId)->second;
     job.deleteCommand();
     jobsMap.erase(jobId);
-    std::cout << "removed old jobs, updating max job id" << std::endl;
+    //std::cout << "removed old jobs, updating max job id" << std::endl;
     int maxJob = getMaxKeyInMap();
-    std::cout << "current max job id is: " << maxJob << std::endl;
+    //std::cout << "current max job id is: " << maxJob << std::endl;
     setCurrentMaxJobId(maxJob);
 }
 
@@ -616,7 +616,6 @@ void ExternalCommand::execute() {
         int nJobId = smash.getJobsReference()->addJob(pid, this, false);
         if (!isBackground()) {
             smash.setFgPid(pid);
-            std::cout << "waiting for job: " << nJobId << " with pid: " << pid << std::endl;
             waitpid(pid, nullptr, WUNTRACED);
             if (!smash.getJobs().getJobsMap().find(nJobId)->second.isStopped()) {
                 // The process was not stopped while it was running, so it is safe to remove it from the jobs list
@@ -708,7 +707,7 @@ void ForegroundCommand::execute() {
         // need to take the max job id
         jobID = smash.getJobs().getCurrentMaxJobId();
     } else {
-        // check if there exit such an ID at the map
+        // check if such an exists ID in the map
         int inputJobId = stoi(arguments[0]);
         if (smash.getJobs().getJobsMap().find(inputJobId) == smash.getJobs().getJobsMap().end()) {
             // there is no such jobID :(
@@ -721,10 +720,12 @@ void ForegroundCommand::execute() {
     int jobPid = smash.getJobs().getJobsMap().find(jobID)->second.getPid();
     cout << cmdLine << " : " << jobPid << endl;
     smash.getJobs().getJobsMap().find(jobID)->second.setBackground(false);
+    smash.setFgPid(jobPid);
     if (kill(jobPid, SIGCONT) == -1) {
         perror("smash error: kill failed");
         return;
     }
+    smash.getJobs().getJobsMap().find(jobID)->second.setStopped(false);
     waitpid(jobPid, nullptr, WUNTRACED);
     if (!smash.getJobs().getJobsMap().find(jobID)->second.isStopped()) {
         // The process was not stopped while it was running, so it is safe to remove it from the jobs list
@@ -807,7 +808,7 @@ RedirectionCommand::RedirectionCommand(const char *cmd_line, bool append) : Comm
 }
 
 void RedirectionCommand::execute() {
-    vector<string> input = Utils::getBreakedCmdRedirection(commandLine, "<", "<<");
+    vector<string> input = Utils::getBreakedCmdRedirection(commandLine, ">", ">>");
     if (input.size() != 2) {
         std::cout << "smash error: invalid argument" << std::endl;
         return;
