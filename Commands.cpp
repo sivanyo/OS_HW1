@@ -347,7 +347,7 @@ void ChangeDirCommand::execute() {
         prev_dir = smash.getCurrDir();
         curr_dir = smash.getLastDir();
         int result = chdir(curr_dir.c_str());
-        if (result != 0) {
+        if (result == -1) {
             // chdir failed
             perror("smash error: chdir failed");
             return;
@@ -890,7 +890,7 @@ void PipeCommand::execute() {
     }
     int channel = 1;
     if (err) {
-        channel = 2;
+        channel = STDERR_FILENO;
     }
     int pidCmd1 = fork();
     if (pidCmd1 == -1) {
@@ -914,11 +914,14 @@ void PipeCommand::execute() {
             delete cmd2;
             return;
         }
-        cmd1->execute();
+        smash.executeCommand(cmd1->getCommandLine());
         exit(0);
     } else {
         wait(nullptr);
+        //waitpid(pidCmd1, nullptr, WUNTRACED);
     }
+
+    //waitpid(pidCmd1, nullptr, WUNTRACED);
 
     int pidCmd2 = fork();
     if (pidCmd2 == -1) {
@@ -929,7 +932,7 @@ void PipeCommand::execute() {
     }
     if (pidCmd2 == 0) {
         // redirect std out or err
-        if (dup2(my_pipe[1], 0) == -1) {
+        if (dup2(my_pipe[0], 0) == -1) {
             perror("smash error: dup failed");
             delete cmd1;
             delete cmd2;
@@ -941,10 +944,10 @@ void PipeCommand::execute() {
             delete cmd2;
             return;
         }
-        cmd2->execute();
+        smash.executeCommand(cmd2->getCommandLine());
         exit(0);
     } else {
-        wait(nullptr);
+        //wait(nullptr);
     }
     // back to normal channels
     if (close(my_pipe[0]) == -1 || close(my_pipe[1]) == -1) {
@@ -953,7 +956,7 @@ void PipeCommand::execute() {
         delete cmd2;
         return;
     }
-
+    //waitpid(pidCmd2, nullptr, WUNTRACED);
     wait(nullptr);
     // TODO:: think if for bg cmd the execute is enough, or i need to handle it in my code section
 
