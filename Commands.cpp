@@ -849,133 +849,84 @@ PipeCommand::PipeCommand(const char *cmd_line, bool err) : Command(cmd_line), er
 void PipeCommand::execute() {
     vector<string> input = Utils::getBreakedCmdRedirection(commandLine, "|", "|&");
     if (input.size() != 2) {
-        std::cout << "smash error: invalid argument" << std::endl;
+        std::cout << "smash error: invalid arguments" << std::endl;
         return;
     }
-    if (input[1].empty() || input[0].empty()) {
-        // dont get cmd
-        std::cout << "smash error: invalid argument" << std::endl;
+    if (input[0].empty() || input[1].empty()) {
+        std::cout << "smash error: invalid arguments" << std::endl;
         return;
     }
-    Command *cmd1 = smash.CreateCommand(input[0].c_str());
-    Command *cmd2 = smash.CreateCommand(input[1].c_str());
-    int my_pipe[2];
-    if (pipe(my_pipe) == -1) {
+    int mypipe[2];
+    if (pipe(mypipe) == -1) {
         perror("smash error: pipe failed");
-        delete cmd1;
-        delete cmd2;
         return;
     }
     int channel = 1;
     if (err) {
         channel = 2;
     }
-    int saved1, saved2;
-    // saving the dup res in prdeer to close the channel and then to open it
-    //int saved = dup(channel);
-    //if (saved == -1) {
-    //    perror("smash error: dup failed");
-    //    delete cmd1;
-    //    delete cmd2;
-    //    return;
-    //}
-    // close the channel in the FDT
-//    if(close(channel) == -1){
-//        perror("smash error: close failed");
-//        delete cmd1;
-//        delete cmd2;
-//        return;
-//    }
-    int pidCmd1 = fork();
-    if (pidCmd1 == -1) {
-        perror("smash error: fork failed");
-        delete cmd1;
-        delete cmd2;
+
+    int saved = dup(channel);
+
+    if (saved == -1) {
+        perror("smash error: dup failed");
         return;
     }
-    if (pidCmd1 == 0) {
-        // redirect std out or err
-        saved1=dup(channel);
-        if (dup2(my_pipe[1], channel) == -1) {
-            perror("smash error: dup failed");
-            delete cmd1;
-            delete cmd2;
-            return;
-        }
 
-        if (close(my_pipe[0]) == -1 || close(my_pipe[1]) == -1) {
-            perror("smash error: close failed");
-            delete cmd1;
-            delete cmd2;
+    int pid1 = fork();
+    if (pid1 == -1) {
+        perror("smash error: fork failed");
+        return;
+    } else if (pid1 == 0) {
+        if (dup2(mypipe[1], channel) == -1) {
+            perror("smash error: dup2 failed");
             return;
         }
-        smash.executeCommand(cmd1->getCommandLine());
-        //exit(0);
+        if (close(mypipe[0]) == -1) {
+            perror("smash error: close failed");
+            return;
+        }
+        if (close(mypipe[1]) == -1) {
+            perror("smash error: close failed");
+            return;
+        }
+        smash.executeCommand(input[0].c_str());
+        exit(0);
     } else {
         wait(nullptr);
-        //waitpid(pidCmd1, nullptr, WUNTRACED);
     }
 
-    //waitpid(pidCmd1, nullptr, WUNTRACED);
-
-    int pidCmd2 = fork();
-    if (pidCmd2 == -1) {
+    int pid2 = fork();
+    if (pid2 == -1) {
         perror("smash error: fork failed");
-        delete cmd1;
-        delete cmd2;
         return;
-    }
-    if (pidCmd2 == 0) {
-        saved2=dup(0);
-        // redirect std out or err
-        if (dup2(my_pipe[0], 0) == -1) {
-            perror("smash error: dup failed");
-            delete cmd1;
-            delete cmd2;
+    } else if (pid2 == 0) {
+        if (dup2(mypipe[0], 0) == -1) {
+            perror("smash error: dup2 failed");
             return;
         }
-        if (close(my_pipe[0]) == -1 || close(my_pipe[1]) == -1) {
+        if (close(mypipe[0]) == -1) {
             perror("smash error: close failed");
-            delete cmd1;
-            delete cmd2;
             return;
         }
-        smash.executeCommand(cmd2->getCommandLine());
-        //exit(0);
-    } else {
-        //wait(nullptr);
+        if (close(mypipe[1]) == -1) {
+            perror("smash error: close failed");
+            return;
+        }
+        smash.executeCommand(input[1].c_str());
+        exit(0);
     }
-    // back to normal channels
-    if (close(my_pipe[0]) == -1 || close(my_pipe[1]) == -1 || close(channel) == -1) {
-        perror("smash error: close failed");
-        delete cmd1;
-        delete cmd2;
-        return;
-    }
-    if(dup2(saved1,channel) == -1){
-        perror("smash error: dup failed");
-        delete cmd1;
-        delete cmd2;
-        return;
-    }
-
-    if(dup2(saved2,0) == -1){
-        perror("smash error: dup failed");
-        delete cmd1;
-        delete cmd2;
-        return;
-    }
-
-    //waitpid(pidCmd2, nullptr, WUNTRACED);
     wait(nullptr);
-    delete cmd1;
-    delete cmd2;
-    // TODO:: think if for bg cmd the execute is enough, or i need to handle it in my code section
-
-}
-
-TimeoutCommand::TimeoutCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
-
+    // waitpid(pid1, nullptr, WUNTRACED);
+    // waitpid(pid2, nullptr, WUNTRACED);
+    if (close(mypipe[0]) == -1) {
+        perror("smash error: close failed");
+        return;
+    }
+    if (close(mypipe[1]) == -1) {
+        perror("smash error: close failed");
+        return;
+    }
 }
 
 void TimeoutCommand::execute() {
