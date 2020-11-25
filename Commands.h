@@ -129,7 +129,7 @@ public:
 
 class CopyCommand : public BuiltInCommand {
 public:
-    explicit CopyCommand(const char *cmd_line);
+    explicit CopyCommand(const char *cmd_line, bool background);
 
     virtual ~CopyCommand() {}
 

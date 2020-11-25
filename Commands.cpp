@@ -148,7 +148,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
     } else if (command.find("timeout") == 0) {
         return new TimeoutCommand(cmd_line);
     } else if (command.find("cp") == 0) {
-        return new CopyCommand(cmd_line);
+        return new CopyCommand(cmd_line, background);
     } else {
         if (command.empty()) {
             return nullptr;
@@ -706,7 +706,8 @@ void ForegroundCommand::execute() {
     string cmdLine = smash.getJobs().getJobsMap().find(jobID)->second.getCommandLine();
     int jobPid = smash.getJobs().getJobsMap().find(jobID)->second.getPid();
     cout << cmdLine << " : " << jobPid << endl;
-    smash.getJobs().getJobsMap().find(jobID)->second.setBackground(false);
+    smash.getJobs().getJobsMap().find(jobID)->
+            second.setBackground(false);
     smash.setFgPid(jobPid);
     if (kill(jobPid, SIGCONT) == -1) {
         perror("smash error: kill failed");
@@ -965,8 +966,9 @@ void TimeoutCommand::execute() {
     Command *realCommand = smash.CreateCommand(realCommandString.c_str());
 }
 
-CopyCommand::CopyCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
-
+CopyCommand::CopyCommand(const char *cmd_line, bool background) : BuiltInCommand(cmd_line) {
+    setBackground(background);
+    external = true;
 }
 
 void CopyCommand::execute() {
@@ -1072,15 +1074,32 @@ void CopyCommand::execute() {
             perror("smash error: close failed");
         }
         return;
+//    } else {
+//        // parent
+//        if (!this->isBackground()) {
+//            smash.setFgPid(pid);
+//            waitpid(pid, nullptr, WUNTRACED);
+//            smash.setFgPid(0);
+//        } else {
+//            smash.getJobsReference()->addJob(pid, this, false);
+//            return;
+//        }
+//    }
     } else {
         // parent
-        if (!this->isBackground()) {
+        smash.getJobsReference()->removeFinishedJobs();
+        int nJobId = smash.getJobsReference()->addJob(pid, this, false);
+        if (!isBackground()) {
             smash.setFgPid(pid);
             waitpid(pid, nullptr, WUNTRACED);
+            if (!smash.getJobs().getJobsMap().find(nJobId)->second.isStopped()) {
+                // The process was not stopped while it was running, so it is safe to remove it from the jobs list
+                smash.getJobsReference()->removeJobById(nJobId);
+            }
+            smash.getJobsReference()->updateLastStoppedJobId();
             smash.setFgPid(0);
-        } else {
-            smash.getJobsReference()->addJob(pid, this, false);
-            return;
         }
+
+
     }
 }
