@@ -127,15 +127,6 @@ public:
     void execute() override;
 };
 
-class MorCommand : public BuiltInCommand {
-public:
-    explicit MorCommand(const char *cmd_line);
-
-    virtual ~MorCommand() {}
-
-    void execute() override;
-};
-
 class JobsList;
 
 class QuitCommand : public BuiltInCommand {
@@ -148,34 +139,62 @@ public:
     void execute() override;
 };
 
-class CommandsHistory {
-protected:
-    class CommandHistoryEntry {
-        // TODO: Add your data members
-    };
-    // TODO: Add your data members
-public:
-    CommandsHistory();
-
-    ~CommandsHistory() {}
-
-    void addRecord(const char *cmd_line);
-
-    void printHistory();
-};
-
-class HistoryCommand : public BuiltInCommand {
-    // TODO: Add your data members
-public:
-    HistoryCommand(const char *cmd_line, CommandsHistory *history);
-
-    virtual ~HistoryCommand() {}
-
-    void execute() override;
-};
-
 class AlarmList {
+public:
+    class AlarmEntry {
+    private:
+        int id = 0;
+        int jobId = 0;
+        int realPid = 0;
+        int originalAlarmDuration = 0;
+        char *originalCommand;
+        time_t arriveTime;
+    public:
+        AlarmEntry(int id, int jobId, int realPid, int alarmDuration, char *originalCommand);
 
+        int getJobId() const;
+
+        int getRealPid() const;
+
+        char *getOriginalCommand() const;
+
+        time_t getArriveTime() const;
+
+        int getOriginalDuration() const;
+
+        ~AlarmEntry() {
+
+        };
+    };
+
+private:
+    int maxAlarmId = 0;
+    std::map<int, AlarmEntry> alarmMap;
+
+public:
+    AlarmList();
+
+    int addAlarm(int jobId, int realPid, int alarmDuration, char *originalCommand);
+
+    void removeAlarmById(int alarmId);
+
+    int getAlarmIdOfExpiredAlarm(time_t now);
+
+    int getJobIdOfExpiredAlarm(time_t now);
+
+    void scheduleNextAlarm(time_t now);
+
+    void updateMaxAlarmId();
+
+    int getMaxId();
+
+    void setMaxAlarmId(int maxAlarmId);
+
+    int getMaxKeyInMap();
+
+    ~AlarmList() {};
+
+    const std::map<int, AlarmEntry> &getAlarmsMap() const;
 };
 
 class JobsList {
@@ -317,7 +336,7 @@ public:
 
 class TimeoutCommand : public BuiltInCommand {
 public:
-    TimeoutCommand(const char *cmd_line);
+    TimeoutCommand(const char *cmd_line, bool isBackground);
 
     virtual ~TimeoutCommand() {}
 
@@ -333,6 +352,7 @@ private:
     SmallShell();
 
     JobsList jobs;
+    AlarmList alarms;
     int pid = 0;
     string prompt = "smash> ";
     string last_dir = "";
@@ -372,6 +392,10 @@ public:
     const JobsList &getJobs() const;
 
     JobsList *getJobsReference();
+
+    const AlarmList &getAlarms() const;
+
+    AlarmList *getAlarmsReference();
 
     void setJobs(JobsList &jobs);
 

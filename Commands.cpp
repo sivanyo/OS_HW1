@@ -145,7 +145,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
          * This part should include certain boolean flags for special commands (maybe should be above internal commands ifs)
          */
     } else if (command.find("timeout") == 0) {
-        return new TimeoutCommand(cmd_line);
+        return new TimeoutCommand(cmd_line, background);
     } else {
         if (command.empty()) {
             return nullptr;
@@ -166,13 +166,6 @@ void SmallShell::executeCommand(const char *cmd_line) {
             delete cmd;
         }
     }
-
-
-    // TODO: Add your implementation here
-    // for example:
-    // Command* cmd = CreateCommand(cmd_line);
-    // cmd->execute();
-    // Please note that you must fork smash process for some commands (e.g., external commands....)
 }
 
 const string &SmallShell::getCurrDir() const {
@@ -224,9 +217,13 @@ void SmallShell::setFgPid(int fgPid) {
     SmallShell::fgPid = fgPid;
 }
 
-//int SmallShell::getJobsListSize() {
-//    return smash.jobs.;
-//}
+const AlarmList &SmallShell::getAlarms() const {
+    return alarms;
+}
+
+AlarmList *SmallShell::getAlarmsReference() {
+    return &alarms;
+}
 
 void ChangePromptCommand::execute() {
     if (arguments.empty()) {
@@ -441,6 +438,10 @@ void JobsList::removeJobById(int jobId) {
 
 const map<int, JobsList::JobEntry> &JobsList::getJobsMap() const {
     return jobsMap;
+}
+
+const map<int, AlarmList::AlarmEntry> &AlarmList::getAlarmsMap() const {
+    return alarmMap;
 }
 
 int JobsList::getMaxKeyInMap() {
@@ -895,7 +896,7 @@ void PipeCommand::execute() {
     }
     if (pidCmd1 == 0) {
         // redirect std out or err
-        saved1=dup(channel);
+        saved1 = dup(channel);
         if (dup2(my_pipe[1], channel) == -1) {
             perror("smash error: dup failed");
             delete cmd1;
@@ -926,7 +927,7 @@ void PipeCommand::execute() {
         return;
     }
     if (pidCmd2 == 0) {
-        saved2=dup(0);
+        saved2 = dup(0);
         // redirect std out or err
         if (dup2(my_pipe[0], 0) == -1) {
             perror("smash error: dup failed");
@@ -952,14 +953,14 @@ void PipeCommand::execute() {
         delete cmd2;
         return;
     }
-    if(dup2(saved1,channel) == -1){
+    if (dup2(saved1, channel) == -1) {
         perror("smash error: dup failed");
         delete cmd1;
         delete cmd2;
         return;
     }
 
-    if(dup2(saved2,0) == -1){
+    if (dup2(saved2, 0) == -1) {
         perror("smash error: dup failed");
         delete cmd1;
         delete cmd2;
@@ -974,8 +975,9 @@ void PipeCommand::execute() {
 
 }
 
-TimeoutCommand::TimeoutCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
-
+TimeoutCommand::TimeoutCommand(const char *cmd_line, bool isBackground) : BuiltInCommand(cmd_line) {
+    background = isBackground;
+    external = true;
 }
 
 void TimeoutCommand::execute() {
@@ -997,6 +999,174 @@ void TimeoutCommand::execute() {
             realCommandString.append(" " + arguments[i]);
         }
     }
-    alarm(duration);
-    Command *realCommand = smash.CreateCommand(realCommandString.c_str());
+
+    /**
+     * Block to run the external command
+     */
+    int pid = fork();
+    if (pid == -1) {
+        perror("smash error: fork failed");
+        return;
+    } else if (pid == 0) {
+        setpgrp();
+        //std::cout << "this is process " << getpid() << "with forked pid: " << pid << "running an external command" << endl;
+
+        char fullArgs[COMMAND_ARGS_MAX_LENGTH] = {0};
+        strcpy(fullArgs, realCommandString.c_str());
+        _trim(fullArgs);
+        _removeBackgroundSign(fullArgs);
+        char *const argsArray[] = {(char *) "/bin/bash", (char *) "-c", fullArgs, nullptr};
+        int result = execv("/bin/bash", argsArray);
+        if (result == -1) {
+            perror("smash error: execv failed");
+            return;
+        }
+    } else {
+        // parent (and also the real timeout command)
+        smash.getJobsReference()->removeFinishedJobs();
+        int nJobId = smash.getJobsReference()->addJob(pid, this, false);
+//        if (smash.getAlarmsReference()->getMaxId() == 0) {
+//            // there are currently no alarms running, can safely set alarm
+//            alarm(duration);
+//        }
+//        // If there are other alarms already running, then we will only save the alarm duration in our map, and when the alarm
+//        // handler is called we will see which is the next alarm that needs to be scheduled
+        int len = strlen(commandLine) + 1;
+        char *cmd = (char *) malloc(len);
+        strcpy(cmd, commandLine);
+        int alarmId = smash.getAlarmsReference()->addAlarm(nJobId, pid, duration, cmd);
+        time_t now = time(nullptr);
+        smash.getAlarmsReference()->scheduleNextAlarm(now);
+        if (!isBackground()) {
+            smash.setFgPid(pid);
+            waitpid(pid, nullptr, WUNTRACED);
+            if (!smash.getJobs().getJobsMap().find(nJobId)->second.isStopped()) {
+                // The process was not stopped while it was running, so it is safe to remove it from the jobs list
+                smash.getJobsReference()->removeJobById(nJobId);
+                smash.getAlarmsReference()->removeAlarmById(alarmId);
+            }
+            smash.getJobsReference()->updateLastStoppedJobId();
+            smash.setFgPid(0);
+        }
+    }
+}
+
+AlarmList::AlarmEntry::AlarmEntry(int id, int jobId, int realPid, int alarmDuration, char *originalCommand) : id(id), jobId(jobId), realPid(realPid),
+                                                                                                              originalAlarmDuration(alarmDuration),
+                                                                                                              originalCommand(originalCommand) {
+    arriveTime = time(nullptr);
+    if (arriveTime == -1) {
+        // TODO: maybe fix in case of failure
+        perror("smash error: time failed");
+    }
+}
+
+time_t AlarmList::AlarmEntry::getArriveTime() const {
+    return arriveTime;
+}
+
+int AlarmList::AlarmEntry::getOriginalDuration() const {
+    return originalAlarmDuration;
+}
+
+int AlarmList::AlarmEntry::getJobId() const {
+    return jobId;
+}
+
+int AlarmList::AlarmEntry::getRealPid() const {
+    return realPid;
+}
+
+char *AlarmList::AlarmEntry::getOriginalCommand() const {
+    return originalCommand;
+}
+
+int AlarmList::getMaxId() {
+    return maxAlarmId;
+}
+
+int AlarmList::addAlarm(int jobId, int realPid, int alarmDuration, char *originalCommand) {
+    int nAlarmId = getMaxId();
+    nAlarmId += 1;
+    AlarmEntry nAlarm(nAlarmId, jobId, realPid, alarmDuration, originalCommand);
+    alarmMap.insert(std::pair<int, AlarmEntry>(nAlarmId, nAlarm));
+    setMaxAlarmId(nAlarmId);
+    return nAlarmId;
+}
+
+int AlarmList::getAlarmIdOfExpiredAlarm(time_t now) {
+    for (auto &it : alarmMap) {
+        int timeLeft = difftime(now, it.second.getArriveTime()) - it.second.getOriginalDuration();
+        if (timeLeft <= 0) {
+            // This command has expired, and needs to be killed
+            return it.first;
+        }
+    }
+    return -1;
+}
+
+int AlarmList::getJobIdOfExpiredAlarm(time_t now) {
+    for (auto &it : alarmMap) {
+        int timeLeft = difftime(now, it.second.getArriveTime()) - it.second.getOriginalDuration();
+        if (timeLeft <= 0) {
+            // This command has expired, and needs to be killed
+            return it.second.getJobId();
+        }
+    }
+    return -1;
+}
+
+void AlarmList::removeAlarmById(int alarmId) {
+    AlarmEntry alarm = alarmMap.find(alarmId)->second;
+    alarmMap.erase(alarmId);
+    int maxJob = getMaxKeyInMap();
+    setMaxAlarmId(maxJob);
+}
+
+AlarmList::AlarmList() = default;
+
+int AlarmList::getMaxKeyInMap() {
+    if (alarmMap.size() == 0) {
+        // no jobs in the map
+        return 0;
+    }
+    int maxJobID = 0;
+    for (const auto &item : alarmMap) {
+        if (item.first > maxJobID) {
+            maxJobID = item.first;
+        }
+    }
+    return maxJobID;
+}
+
+void AlarmList::setMaxAlarmId(int maxAlarmId) {
+    AlarmList::maxAlarmId = maxAlarmId;
+}
+
+void AlarmList::updateMaxAlarmId() {
+    if (alarmMap.size() == 0) {
+        maxAlarmId = 0;
+    }
+    int maxId = 0;
+    for (auto item : alarmMap) {
+        if (item.first > maxId) {
+            maxId = item.first;
+        }
+    }
+    maxAlarmId = maxId;
+}
+
+void AlarmList::scheduleNextAlarm(time_t now) {
+    int upcomingAlarm = -1;
+    if (alarmMap.empty()) {
+        return;
+    }
+    for (auto &it : alarmMap) {
+        int timeTillNow = difftime(now, it.second.getArriveTime());
+        int remaining = it.second.getOriginalDuration() - timeTillNow;
+        if (remaining < upcomingAlarm || upcomingAlarm == -1) {
+            upcomingAlarm = remaining;
+        }
+    }
+    alarm(upcomingAlarm);
 }
