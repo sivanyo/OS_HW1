@@ -971,8 +971,8 @@ CopyCommand::CopyCommand(const char *cmd_line) : BuiltInCommand(cmd_line) {
 
 void CopyCommand::execute() {
     // check valid
-    if(arguments.size() <2){
-        std::cout <<"smash error: invalid arguments" << endl;
+    if (arguments.size() < 2) {
+        std::cout << "smash error: invalid arguments" << endl;
         return;
     }
     int pid = fork();
@@ -1004,7 +1004,7 @@ void CopyCommand::execute() {
             // same path
             free(temp_dst);
             free(temp_src);
-            if(!this->isBackground()) {
+            if (!this->isBackground()) {
                 std::cout << "smash: " << arguments[0] << " was copied to " << arguments[1] << endl;
             }
             return;
@@ -1023,45 +1023,63 @@ void CopyCommand::execute() {
             }
             return;
         }
-
-        void *buff = malloc(fileSize);
-
-        while (!copy) {
-            int readNum = read(fd, buff, fileSize);
-            if (readNum <= 0) {
-                if (readNum != 0) {
-                    perror("smash error: read failed");
-                    // return;
-                } else {
-                    if(!this->isBackground()) {
-                        std::cout << "smash: " << arguments[0] << " was copied to " << arguments[1] << endl;
-                    }
-                }
-                copy = true;
-            } else {
-                int writeNum = write(destFd, buff, readNum);
-                if (writeNum != readNum) {
-                    perror("smash error: write failed");
-                    copy = true;
-                }
+        while (fileSize != 0) {
+            void *buff = malloc(1);
+            int readNum = read(fd, buff, 1);
+            if (readNum != 1) {
+                perror("smash error: read failed");
+                free(buff);
+                return;
             }
+            int writeNum = write(destFd, buff, 1);
+            if (writeNum != 1) {
+                perror("smash error: write failed");
+                free(buff);
+                return;
+            }
+            // if got here, succeed read and write one byte
+            --fileSize;
+            free(buff);
         }
-        free(buff);
+        if (!this->isBackground()) {
+            std::cout << "smash: " << arguments[0] << " was copied to " << arguments[1] << endl;
+        }
+
+//        while (!copy) {
+//            int readNum = read(fd, buff, fileSize);
+//            if (readNum <= 0) {
+//                if (readNum != 0) {
+//                    perror("smash error: read failed");
+//                    // return;
+//                } else {
+//                    if(!this->isBackground()) {
+//                        std::cout << "smash: " << arguments[0] << " was copied to " << arguments[1] << endl;
+//                    }
+//                }
+//                copy = true;
+//            } else {
+//                int writeNum = write(destFd, buff, readNum);
+//                if (writeNum != readNum) {
+//                    perror("smash error: write failed");
+//                    copy = true;
+//                }
+//            }
+//        }
+//        free(buff);
         fd = close(fd);
         destFd = close(destFd);
         if (fd == -1 || destFd == -1) {
             perror("smash error: close failed");
         }
         return;
-    }
-    else {
+    } else {
         // parent
         if (!this->isBackground()) {
             smash.setFgPid(pid);
             waitpid(pid, nullptr, WUNTRACED);
             smash.setFgPid(0);
         } else {
-            smash.getJobsReference()->addJob(pid,this, false);
+            smash.getJobsReference()->addJob(pid, this, false);
             return;
         }
     }
