@@ -9,6 +9,7 @@
 #include <sys/wait.h>
 #include <iomanip>
 #include <sys/fcntl.h>
+#include <fstream>
 #include "Commands.h"
 #include "Utils.h"
 
@@ -146,6 +147,8 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
          */
     } else if (command.find("timeout") == 0) {
         return new TimeoutCommand(cmd_line, background);
+    } else if (command.find("cp") == 0) {
+        return new CopyCommand(cmd_line, background);
     } else {
         if (command.empty()) {
             return nullptr;
@@ -850,130 +853,91 @@ PipeCommand::PipeCommand(const char *cmd_line, bool err) : Command(cmd_line), er
 void PipeCommand::execute() {
     vector<string> input = Utils::getBreakedCmdRedirection(commandLine, "|", "|&");
     if (input.size() != 2) {
-        std::cout << "smash error: invalid argument" << std::endl;
+        std::cout << "smash error: invalid arguments" << std::endl;
         return;
     }
-    if (input[1].empty() || input[0].empty()) {
-        // dont get cmd
-        std::cout << "smash error: invalid argument" << std::endl;
+    if (input[0].empty() || input[1].empty()) {
+        std::cout << "smash error: invalid arguments" << std::endl;
         return;
     }
-    Command *cmd1 = smash.CreateCommand(input[0].c_str());
-    Command *cmd2 = smash.CreateCommand(input[1].c_str());
-    int my_pipe[2];
-    if (pipe(my_pipe) == -1) {
+    int mypipe[2];
+    if (pipe(mypipe) == -1) {
         perror("smash error: pipe failed");
-        delete cmd1;
-        delete cmd2;
         return;
     }
     int channel = 1;
     if (err) {
         channel = 2;
     }
-    int saved1, saved2;
-    // saving the dup res in prdeer to close the channel and then to open it
-    //int saved = dup(channel);
-    //if (saved == -1) {
-    //    perror("smash error: dup failed");
-    //    delete cmd1;
-    //    delete cmd2;
-    //    return;
-    //}
-    // close the channel in the FDT
-//    if(close(channel) == -1){
-//        perror("smash error: close failed");
-//        delete cmd1;
-//        delete cmd2;
-//        return;
-//    }
-    int pidCmd1 = fork();
-    if (pidCmd1 == -1) {
-        perror("smash error: fork failed");
-        delete cmd1;
-        delete cmd2;
+
+    int saved = dup(channel);
+
+    if (saved == -1) {
+        perror("smash error: dup failed");
         return;
     }
-    if (pidCmd1 == 0) {
-        // redirect std out or err
-        saved1 = dup(channel);
-        if (dup2(my_pipe[1], channel) == -1) {
-            perror("smash error: dup failed");
-            delete cmd1;
-            delete cmd2;
-            return;
-        }
 
-        if (close(my_pipe[0]) == -1 || close(my_pipe[1]) == -1) {
-            perror("smash error: close failed");
-            delete cmd1;
-            delete cmd2;
+    int pid1 = fork();
+    if (pid1 == -1) {
+        perror("smash error: fork failed");
+        return;
+    } else if (pid1 == 0) {
+        if (dup2(mypipe[1], channel) == -1) {
+            perror("smash error: dup2 failed");
             return;
         }
-        smash.executeCommand(cmd1->getCommandLine());
-        //exit(0);
+        if (close(mypipe[0]) == -1) {
+            perror("smash error: close failed");
+            return;
+        }
+        if (close(mypipe[1]) == -1) {
+            perror("smash error: close failed");
+            return;
+        }
+        smash.executeCommand(input[0].c_str());
+        exit(0);
     } else {
         wait(nullptr);
-        //waitpid(pidCmd1, nullptr, WUNTRACED);
     }
 
-    //waitpid(pidCmd1, nullptr, WUNTRACED);
-
-    int pidCmd2 = fork();
-    if (pidCmd2 == -1) {
+    int pid2 = fork();
+    if (pid2 == -1) {
         perror("smash error: fork failed");
-        delete cmd1;
-        delete cmd2;
         return;
-    }
-    if (pidCmd2 == 0) {
-        saved2 = dup(0);
-        // redirect std out or err
-        if (dup2(my_pipe[0], 0) == -1) {
-            perror("smash error: dup failed");
-            delete cmd1;
-            delete cmd2;
+    } else if (pid2 == 0) {
+        if (dup2(mypipe[0], 0) == -1) {
+            perror("smash error: dup2 failed");
             return;
         }
-        if (close(my_pipe[0]) == -1 || close(my_pipe[1]) == -1) {
+        if (close(mypipe[0]) == -1) {
             perror("smash error: close failed");
-            delete cmd1;
-            delete cmd2;
             return;
         }
-        smash.executeCommand(cmd2->getCommandLine());
-        //exit(0);
-    } else {
-        //wait(nullptr);
+        if (close(mypipe[1]) == -1) {
+            perror("smash error: close failed");
+            return;
+        }
+        smash.executeCommand(input[1].c_str());
+        exit(0);
     }
-    // back to normal channels
-    if (close(my_pipe[0]) == -1 || close(my_pipe[1]) == -1 || close(channel) == -1) {
+
+    // waitpid(pid1, nullptr, WUNTRACED);
+    // waitpid(pid2, nullptr, WUNTRACED);
+    if (close(mypipe[0]) == -1) {
         perror("smash error: close failed");
-        delete cmd1;
-        delete cmd2;
         return;
     }
-    if (dup2(saved1, channel) == -1) {
-        perror("smash error: dup failed");
-        delete cmd1;
-        delete cmd2;
+    if (close(mypipe[1]) == -1) {
+        perror("smash error: close failed");
         return;
     }
-
-    if (dup2(saved2, 0) == -1) {
-        perror("smash error: dup failed");
-        delete cmd1;
-        delete cmd2;
+    if (dup2(saved, channel) == -1) {
+        perror("smash error: dup2 failed");
         return;
     }
-
-    //waitpid(pidCmd2, nullptr, WUNTRACED);
     wait(nullptr);
-    delete cmd1;
-    delete cmd2;
-    // TODO:: think if for bg cmd the execute is enough, or i need to handle it in my code section
-
 }
+
 
 TimeoutCommand::TimeoutCommand(const char *cmd_line, bool isBackground) : BuiltInCommand(cmd_line) {
     background = isBackground;
@@ -999,7 +963,6 @@ void TimeoutCommand::execute() {
             realCommandString.append(" " + arguments[i]);
         }
     }
-
     /**
      * Block to run the external command
      */
@@ -1169,4 +1132,143 @@ void AlarmList::scheduleNextAlarm(time_t now) {
         }
     }
     alarm(upcomingAlarm);
+}
+
+
+CopyCommand::CopyCommand(const char *cmd_line, bool background) : BuiltInCommand(cmd_line) {
+    setBackground(background);
+    external = true;
+}
+
+void CopyCommand::execute() {
+    // check valid
+    if (arguments.size() < 2) {
+        std::cout << "smash error: invalid arguments" << endl;
+        return;
+    }
+    int pid = fork();
+    if (pid == -1) {
+        perror("smash error : fork failed");
+        return;
+    }
+
+    if (pid == 0) {
+        // child
+        bool copy = false;
+        int fd = open(arguments[0].c_str(), O_RDONLY);
+        if (fd == -1) {
+            perror("smash error: open failed");
+            return;
+        }
+        ifstream in_file(arguments[0].c_str(), ios::binary);
+        in_file.seekg(0, ios::end);
+        int fileSize = in_file.tellg();
+
+        char *temp_src = realpath(arguments[0].c_str(), nullptr);
+        if (temp_src == nullptr) {
+            perror("smash error: realpath failed");
+            return;
+        }
+
+        char *temp_dst = realpath(arguments[1].c_str(), nullptr);
+        if (temp_dst != nullptr && strcmp(temp_dst, temp_src) == 0) {
+            // same path
+            free(temp_dst);
+            free(temp_src);
+            if (!this->isBackground()) {
+                std::cout << "smash: " << arguments[0] << " was copied to " << arguments[1] << endl;
+            }
+            return;
+        } else {
+            free(temp_src);
+        }
+        if (temp_dst != nullptr) {
+            free(temp_dst);
+        }
+
+        int destFd = open(arguments[1].c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
+        if (destFd == -1) {
+            perror("smash error: open failed");
+            if (close(fd) == -1) {
+                perror("smash error: close failed");
+            }
+            return;
+        }
+        while (fileSize != 0) {
+            void *buff = malloc(1);
+            int readNum = read(fd, buff, 1);
+            if (readNum != 1) {
+                perror("smash error: read failed");
+                free(buff);
+                return;
+            }
+            int writeNum = write(destFd, buff, 1);
+            if (writeNum != 1) {
+                perror("smash error: write failed");
+                free(buff);
+                return;
+            }
+            // if got here, succeed read and write one byte
+            --fileSize;
+            free(buff);
+        }
+        if (!this->isBackground()) {
+            std::cout << "smash: " << arguments[0] << " was copied to " << arguments[1] << endl;
+        }
+
+//        while (!copy) {
+//            int readNum = read(fd, buff, fileSize);
+//            if (readNum <= 0) {
+//                if (readNum != 0) {
+//                    perror("smash error: read failed");
+//                    // return;
+//                } else {
+//                    if(!this->isBackground()) {
+//                        std::cout << "smash: " << arguments[0] << " was copied to " << arguments[1] << endl;
+//                    }
+//                }
+//                copy = true;
+//            } else {
+//                int writeNum = write(destFd, buff, readNum);
+//                if (writeNum != readNum) {
+//                    perror("smash error: write failed");
+//                    copy = true;
+//                }
+//            }
+//        }
+//        free(buff);
+        fd = close(fd);
+        destFd = close(destFd);
+        if (fd == -1 || destFd == -1) {
+            perror("smash error: close failed");
+        }
+        return;
+//    } else {
+//        // parent
+//        if (!this->isBackground()) {
+//            smash.setFgPid(pid);
+//            waitpid(pid, nullptr, WUNTRACED);
+//            smash.setFgPid(0);
+//        } else {
+//            smash.getJobsReference()->addJob(pid, this, false);
+//            return;
+//        }
+//    }
+    } else {
+        // parent
+        smash.getJobsReference()->removeFinishedJobs();
+        int nJobId = smash.getJobsReference()->addJob(pid, this, false);
+        if (!isBackground()) {
+            smash.setFgPid(pid);
+            waitpid(pid, nullptr, WUNTRACED);
+            if (!smash.getJobs().getJobsMap().find(nJobId)->second.isStopped()) {
+                // The process was not stopped while it was running, so it is safe to remove it from the jobs list
+                smash.getJobsReference()->removeJobById(nJobId);
+            }
+            smash.getJobsReference()->updateLastStoppedJobId();
+            smash.setFgPid(0);
+        }
+
+
+    }
 }

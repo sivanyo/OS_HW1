@@ -127,6 +127,15 @@ public:
     void execute() override;
 };
 
+class CopyCommand : public BuiltInCommand {
+public:
+    explicit CopyCommand(const char *cmd_line, bool background);
+
+    virtual ~CopyCommand() {}
+
+    void execute() override;
+};
+
 class JobsList;
 
 class QuitCommand : public BuiltInCommand {

@@ -29,7 +29,7 @@ int main(int argc, char *argv[]) {
         perror("smash error: failed to set alarm handler");
     }
 
-    while (true && !gotQuit) {
+    while (!gotQuit) {
         std::cout << smash.GetPrompt();
         std::string cmd_line;
         std::getline(std::cin, cmd_line);
