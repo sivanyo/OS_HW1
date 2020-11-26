@@ -1059,7 +1059,7 @@ int AlarmList::addAlarm(int jobId, int realPid, int alarmDuration, char *origina
 
 int AlarmList::getAlarmIdOfExpiredAlarm(time_t now) {
     for (auto &it : alarmMap) {
-        int timeLeft = difftime(now, it.second.getArriveTime()) - it.second.getOriginalDuration();
+        int timeLeft = it.second.getOriginalDuration() - difftime(now, it.second.getArriveTime());
         if (timeLeft <= 0) {
             // This command has expired, and needs to be killed
             return it.first;
@@ -1125,8 +1125,8 @@ void AlarmList::scheduleNextAlarm(time_t now) {
         return;
     }
     for (auto &it : alarmMap) {
-        int timeTillNow = difftime(now, it.second.getArriveTime());
-        int remaining = it.second.getOriginalDuration() - timeTillNow;
+        int timePassedSinceArrival = difftime(now, it.second.getArriveTime());
+        int remaining = it.second.getOriginalDuration() - timePassedSinceArrival;
         if (remaining < upcomingAlarm || upcomingAlarm == -1) {
             upcomingAlarm = remaining;
         }
