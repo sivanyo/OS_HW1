@@ -29,15 +29,20 @@ void ctrlCHandler(int sig_num) {
     signal(SIGINT, &ctrlCHandler);
     std::cout << "smash: got ctrl-C" << std::endl;
     // Send the signal to the correct process
-    int jobId = smash.getJobs().getCurrentMaxJobId();
-    if (jobId != 0) {
-        int procPid = smash.getJobs().getJobsMap().find(jobId)->second.getPid();
-        int result = kill(procPid, SIGINT);
+    //int jobId = smash.getJobs().getCurrentMaxJobId();
+    int fgPid = smash.getFgPid();
+    //if (jobId != 0) {
+    if (fgPid != 0) {
+        //int procPid = smash.getJobs().getJobsMap().find(jobId)->second.getPid();
+        int jobID = smash.getJobsReference()->getJobIdByProcessId(fgPid);
+        //int result = kill(procPid, SIGINT);
+        int result = kill(fgPid, SIGINT);
         if (result == -1) {
             perror("smash error: kill failed");
             return;
         }
-        std::cout << "smash: process " << procPid << " was killed" << std::endl;
+        //std::cout << "smash: process " << procPid << " was killed" << std::endl;
+        std::cout << "smash: process " << fgPid << " was killed" << std::endl;
         //smash.getJobsReference()->removeJobById(jobId);
     }
 }

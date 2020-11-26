@@ -392,9 +392,9 @@ void JobsList::printJobsList() {
             return;
         }
         cout << "[" << i.second.getJobId() << "] " << i.second.getCommandLine() << " : "
-             << i.second.getPid() << " " << difftime(now, i.second.getArriveTime()) << " secs ";
+             << i.second.getPid() << " " << difftime(now, i.second.getArriveTime()) << " secs";
         if (i.second.isStopped()) {
-            cout << "(stopped)";
+            cout << " (stopped)";
         }
         cout << endl;
     }
@@ -827,12 +827,14 @@ void RedirectionCommand::execute() {
     }
     if (result == -1) {
         perror("smash error: open failed");
+        dup2(dup_res, 1);
         delete cmd;
         return;
     }
     smash.executeCommand(cmd->getCommandLine());
     if (close(1) == -1) {
         perror("smash error: close failed");
+        dup2(dup_res, 1);
         delete cmd;
         return;
     }

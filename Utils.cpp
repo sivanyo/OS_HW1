@@ -35,9 +35,10 @@ bool Utils::isBackgroundCommand(const string &s) {
 }
 
 bool Utils::isRedirectionCommand(const string &s) {
+    // TODO: need to fix other redirect flag checkers in a similar manner (sivan)
     vector<string> res = stringToWords(s);
     for(int i = 0 ; i < res.size() ; i++){
-        if(res[i] == ">"){
+        if(res[i].find(">") == 0){
             return true;
         }
     }
@@ -100,6 +101,7 @@ void Utils::printCommandLineFromJob(string cmdline, int pid) {
 }
 
 vector<string> Utils::getBreakedCmdRedirection(const string& s, const string& s1, const string& s2) {
+    // TODO: this should be able to handle cases where special symbols (>,>>,|,&) are not spaced from normal arguments
     vector<string> sentence = stringToWords(s);
     vector<string> result;
     bool after = false;
