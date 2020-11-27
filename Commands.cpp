@@ -742,11 +742,16 @@ void KillCommand::execute() {
     } else {
         signumArg = std::stoi(arguments[0]);
         jobId = std::stoi(arguments[1]);
-        if (signumArg >= 0) {
-            // An invalid signal was provided
-            cout << "smash error: kill: invalid arguments" << endl;
-            return;
-        }
+    }
+    if (jobId < 0) {
+        // there is no such job id, cant send signal
+        cout << "smash error: kill: job-id " << jobId << " does not exist" << endl;
+        return;
+    }
+    if (signumArg >= 0) {
+        // An invalid signal was provided
+        cout << "smash error: kill: invalid arguments" << endl;
+        return;
     }
     if (smash.getJobs().getJobsMap().find(jobId) == smash.getJobs().getJobsMap().end()) {
         // there is no such job id, cant send signal
@@ -757,6 +762,7 @@ void KillCommand::execute() {
     int jobPid = smash.getJobs().getJobsMap().find(jobId)->second.getPid();
     if (kill(jobPid, realSignNum) == -1) {
         perror("smash error: kill failed");
+        return;
     } else if (realSignNum == 9) {
         // the process will be finished, need to remove from job list
         smash.getJobsReference()->removeJobById(jobId);
@@ -796,7 +802,13 @@ RedirectionCommand::RedirectionCommand(const char *cmd_line, bool append) : Comm
 }
 
 void RedirectionCommand::execute() {
-    vector<string> input = Utils::getBreakedCmdRedirection(commandLine, ">", ">>");
+    vector<string> input;
+    if (append == false) {
+        input = Utils::splitAccordingToRedirect(commandLine);
+    } else {
+        input = Utils::splitAccordingToAppend(commandLine);
+    }
+    //vector<string> input = Utils::getBreakedCmdRedirection(commandLine, ">", ">>");
     if (input.size() != 2) {
         std::cout << "smash error: invalid argument" << std::endl;
         return;
@@ -853,7 +865,13 @@ PipeCommand::PipeCommand(const char *cmd_line, bool err) : Command(cmd_line), er
 }
 
 void PipeCommand::execute() {
-    vector<string> input = Utils::getBreakedCmdRedirection(commandLine, "|", "|&");
+    vector<string> input;
+    if (err == false) {
+        input = Utils::splitAccordingToPipe(commandLine);
+    } else {
+        input = Utils::splitAccordingToPipeErr(commandLine);
+    }
+    //vector<string> input = Utils::getBreakedCmdRedirection(commandLine, "|", "|&");
     if (input.size() != 2) {
         std::cout << "smash error: invalid arguments" << std::endl;
         return;

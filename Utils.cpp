@@ -3,6 +3,7 @@
 //
 
 #include <iostream>
+#include <string.h>
 #include <unistd.h>
 #include "Utils.h"
 
@@ -10,53 +11,17 @@ using std::cout;
 using std::endl;
 
 // || x == ">" || x == ">>" || x ==
-vector<string> Utils::stringToWords(string s) {
+vector<string> Utils::stringToWords(const string &s) {
     vector<string> result;
     string word = "";
     for (auto x: s) {
-        if (x == ' ' || x == '>' || x == '>>' || x == '|' || x == '|&') {
-            if (x == '>'){
-                if(word != ""){
-                    result.push_back(word);
-                    result.push_back(">");
-                }
-                else{
-                    result.push_back(">");
-                }
-            }else if (x == '>>'){
-                if(word != ""){
-                    result.push_back(word);
-                    result.push_back(">");
-                }
-                else{
-                    result.push_back(">>");
-                }
-            }else if(x == '|'){
-                if(word != ""){
-                    result.push_back(word);
-                    result.push_back("|");
-                }
-                else{
-                    result.push_back("|");
-                }
-
-            }else if(x == '|&'){
-                if(word != ""){
-                    result.push_back(word);
-                    result.push_back("|&");
-                }
-                else{
-                    result.push_back("|&");
-                }
-            }else{
-                result.push_back(word);
-                word = "";
-            }
+        if (x == ' ' && word != "") {
+            result.push_back(word);
+            word = "";
         } else {
             word = word + x;
         }
     }
-
     if (word != "") {
         result.push_back(word);
     }
@@ -183,5 +148,103 @@ vector<string> Utils::getBreakedCmdRedirection(const string &s, const string &s1
     }
     result.push_back(cmd1);
     result.push_back(cmd2);
+    return result;
+}
+
+// Receives a string and splits it to first part and second part based on when the '>' sign appears
+vector<string> Utils::splitAccordingToRedirect(const string &s) {
+    vector<string> result = {"", ""};
+    bool start2nd = false;
+    for (int i = 0; i < s.size(); ++i) {
+        if (s[i] != '>') {
+            if (start2nd == false) {
+                result[0].push_back(s[i]);
+            } else {
+                if (result[1].size() == 0 && s[i] == ' ') {
+                    continue;
+                }
+                result[1].push_back(s[i]);
+            }
+        } else {
+            start2nd = true;
+            if (s[i - 1] == ' ') {
+                result[0].erase(i - 1, 1);
+            }
+        }
+    }
+    return result;
+}
+
+// Receives a string and splits it to first part and second part based on when the '>>' sign appears
+vector<string> Utils::splitAccordingToAppend(const string &s) {
+    vector<string> result = {"", ""};
+    bool start2nd = false;
+    for (int i = 0; i < s.size(); ++i) {
+        if (s[i] != '>') {
+            if (start2nd == false) {
+                result[0].push_back(s[i]);
+            } else {
+                if (result[1].size() == 0 && s[i] == ' ') {
+                    continue;
+                }
+                result[1].push_back(s[i]);
+            }
+        } else {
+            start2nd = true;
+            if (s[i - 1] == ' ') {
+                result[0].erase(i - 1, 1);
+            }
+            i = i + 1;
+        }
+    }
+    return result;
+}
+
+// Receives a string and splits it to first part and second part based on when the '|' sign appears
+vector<string> Utils::splitAccordingToPipe(const string &s) {
+    vector<string> result = {"", ""};
+    bool start2nd = false;
+    for (int i = 0; i < s.size(); ++i) {
+        if (s[i] != '|') {
+            if (start2nd == false) {
+                result[0].push_back(s[i]);
+            } else {
+                if (result[1].size() == 0 && s[i] == ' ') {
+                    continue;
+                }
+                result[1].push_back(s[i]);
+            }
+        } else {
+            start2nd = true;
+            if (s[i - 1] == ' ') {
+                result[0].erase(i - 1, 1);
+            }
+        }
+    }
+    return result;
+}
+
+// Receives a string and splits it to first part and second part based on when the '|&' sign appears
+vector<string> Utils::splitAccordingToPipeErr(const string &s) {
+    vector<string> result = {"", ""};
+    bool start2nd = false;
+    for (int i = 0; i < s.size(); ++i) {
+        if (s[i] != '|') {
+            if (start2nd == false) {
+                result[0].push_back(s[i]);
+            } else {
+                if (result[1].size() == 0 && s[i] == ' ') {
+                    continue;
+                }
+                result[1].push_back(s[i]);
+            }
+        } else {
+            start2nd = true;
+            if (s[i - 1] == ' ') {
+                result[0].erase(i - 1, 1);
+            }
+            i = i + 1;
+        }
+    }
     return result;
 }

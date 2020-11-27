@@ -13,20 +13,33 @@ using std::string;
 
 class Utils {
 public:
-    static vector<string> stringToWords(string s);
-    static bool isBackgroundCommand(const string& s);
-    static bool isRedirectionCommand(const string& s);
-    static bool isRedirectionCommandWithAppend(const string& s);
-    static bool isPipeout(const string& s);
-    static bool isPipeErr(const string& s);
+    static vector<string> stringToWords(const string &s);
+
+    static bool isBackgroundCommand(const string &s);
+
+    static bool isRedirectionCommand(const string &s);
+
+    static bool isRedirectionCommandWithAppend(const string &s);
+
+    static bool isPipeout(const string &s);
+
+    static bool isPipeErr(const string &s);
+
+    static vector<string> splitAccordingToRedirect(const string &s);
+
+    static vector<string> splitAccordingToAppend(const string &s);
+
+    static vector<string> splitAccordingToPipe(const string &s);
+
+    static vector<string> splitAccordingToPipeErr(const string &s);
 
     static string GetCurrentWorkingDirectoryString();
 
-    static bool isInteger(const std::string & s);
+    static bool isInteger(const std::string &s);
 
     static void printCommandLineFromJob(string cmdline, int pid);
 
-    static vector<string> getBreakedCmdRedirection(const string& s, const string& s1, const string& s2);
+    static vector<string> getBreakedCmdRedirection(const string &s, const string &s1, const string &s2);
 };
 
 
