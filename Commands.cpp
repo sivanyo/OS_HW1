@@ -115,7 +115,7 @@ Command *SmallShell::CreateCommand(const char *cmd_line) {
         if (redirectAppend) {
             append = true;
         }
-        return new RedirectionCommand(cmd_line, append);
+        return new RedirectionCommand(cmd_line, append, background);
     } else if (pipe || pipeErr) {
         bool err = false;
         if (pipeErr) {
@@ -797,8 +797,8 @@ void QuitCommand::execute() {
 }
 
 
-RedirectionCommand::RedirectionCommand(const char *cmd_line, bool append) : Command(cmd_line), append(append) {
-
+RedirectionCommand::RedirectionCommand(const char *cmd_line, bool append, bool background) : Command(cmd_line), append(append) {
+    this->background = background;
 }
 
 void RedirectionCommand::execute() {
@@ -808,7 +808,6 @@ void RedirectionCommand::execute() {
     } else {
         input = Utils::splitAccordingToAppend(commandLine);
     }
-    //vector<string> input = Utils::getBreakedCmdRedirection(commandLine, ">", ">>");
     if (input.size() != 2) {
         std::cout << "smash error: invalid argument" << std::endl;
         return;
@@ -817,6 +816,11 @@ void RedirectionCommand::execute() {
         // dont get file name or cmd
         std::cout << "smash error: invalid argument" << std::endl;
         return;
+    }
+    if (background) {
+        // Marking the left command as a background one
+        input[0].append(" &");
+        input[1] = Utils::removeBackgroundSignFromSecondCommand(input[1]);
     }
     Command *cmd = smash.CreateCommand(input[0].c_str());
     string filename = input[1];

@@ -248,3 +248,13 @@ vector<string> Utils::splitAccordingToPipeErr(const string &s) {
     }
     return result;
 }
+
+string Utils::removeBackgroundSignFromSecondCommand(const string &s) {
+    string result = "";
+    for (char i : s) {
+        if (i != '&') {
+            result.push_back(i);
+        }
+    }
+    return result;
+}

@@ -81,7 +81,7 @@ class RedirectionCommand : public Command {
     bool append;
 
 public:
-    explicit RedirectionCommand(const char *cmd_line, bool append);
+    explicit RedirectionCommand(const char *cmd_line, bool append, bool background);
 
     virtual ~RedirectionCommand() {}
 

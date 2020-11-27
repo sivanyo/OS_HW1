@@ -33,6 +33,8 @@ public:
 
     static vector<string> splitAccordingToPipeErr(const string &s);
 
+    static string removeBackgroundSignFromSecondCommand(const string &s);
+
     static string GetCurrentWorkingDirectoryString();
 
     static bool isInteger(const std::string &s);
