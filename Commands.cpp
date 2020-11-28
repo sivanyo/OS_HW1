@@ -13,6 +13,8 @@
 #include "Commands.h"
 #include "Utils.h"
 
+#define BUFFER 1024
+
 extern SmallShell &smash;
 bool gotQuit = false;
 
@@ -1181,26 +1183,31 @@ void CopyCommand::execute() {
     }
 
     if (pid == 0) {
+        setpgrp();
         // child
-        bool copy = false;
-        int fd = open(arguments[0].c_str(), O_RDONLY);
-        if (fd == -1) {
-            perror("smash error: open failed");
-            return;
-        }
-        ifstream in_file(arguments[0].c_str(), ios::binary);
-        in_file.seekg(0, ios::end);
-        int fileSize = in_file.tellg();
-
+        // Returns the complete path of the source file (will expand relative path to absolute)
         char *temp_src = realpath(arguments[0].c_str(), nullptr);
         if (temp_src == nullptr) {
             perror("smash error: realpath failed");
             return;
         }
 
+        // Getting source file size
+        ifstream in_file(arguments[0].c_str(), ios::binary);
+        in_file.seekg(0, ios::end);
+        int fileSize = in_file.tellg();
+
+        // Getting file descriptor for source file
+        int srcFd = open(arguments[0].c_str(), O_RDONLY);
+        if (srcFd == -1) {
+            perror("smash error: open failed");
+            return;
+        }
+
+        // Returns the complete path of the destination file (will expand relative path to absolute)
         char *temp_dst = realpath(arguments[1].c_str(), nullptr);
         if (temp_dst != nullptr && strcmp(temp_dst, temp_src) == 0) {
-            // same path
+            // source and destination paths are the same, not copying and just printing out a message
             free(temp_dst);
             free(temp_src);
             if (!this->isBackground()) {
@@ -1209,79 +1216,42 @@ void CopyCommand::execute() {
             return;
         } else {
             free(temp_src);
-        }
-        if (temp_dst != nullptr) {
             free(temp_dst);
         }
 
+        // Getting file descriptor for destination file
         int destFd = open(arguments[1].c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0666);
         if (destFd == -1) {
             perror("smash error: open failed");
-            if (close(fd) == -1) {
+            if (close(srcFd) == -1) {
                 perror("smash error: close failed");
             }
             return;
         }
-        while (fileSize != 0) {
-            void *buff = malloc(1);
-            int readNum = read(fd, buff, 1);
-            if (readNum != 1) {
+        while (fileSize > 0) {
+            char buff[BUFFER];
+            int readNum = read(srcFd, buff, BUFFER);
+            if (readNum <= 0) {
                 perror("smash error: read failed");
-                free(buff);
                 return;
             }
-            int writeNum = write(destFd, buff, 1);
-            if (writeNum != 1) {
+            int writeNum = write(destFd, buff, readNum);
+            if (writeNum <= 0) {
                 perror("smash error: write failed");
-                free(buff);
                 return;
             }
-            // if got here, succeed read and write one byte
-            --fileSize;
-            free(buff);
+            // Decrementing actually written bytes from the total size left
+            fileSize -= BUFFER;
         }
         if (!this->isBackground()) {
             std::cout << "smash: " << arguments[0] << " was copied to " << arguments[1] << endl;
         }
-
-//        while (!copy) {
-//            int readNum = read(fd, buff, fileSize);
-//            if (readNum <= 0) {
-//                if (readNum != 0) {
-//                    perror("smash error: read failed");
-//                    // return;
-//                } else {
-//                    if(!this->isBackground()) {
-//                        std::cout << "smash: " << arguments[0] << " was copied to " << arguments[1] << endl;
-//                    }
-//                }
-//                copy = true;
-//            } else {
-//                int writeNum = write(destFd, buff, readNum);
-//                if (writeNum != readNum) {
-//                    perror("smash error: write failed");
-//                    copy = true;
-//                }
-//            }
-//        }
-//        free(buff);
-        fd = close(fd);
+        srcFd = close(srcFd);
         destFd = close(destFd);
-        if (fd == -1 || destFd == -1) {
+        if (srcFd == -1 || destFd == -1) {
             perror("smash error: close failed");
         }
         return;
-//    } else {
-//        // parent
-//        if (!this->isBackground()) {
-//            smash.setFgPid(pid);
-//            waitpid(pid, nullptr, WUNTRACED);
-//            smash.setFgPid(0);
-//        } else {
-//            smash.getJobsReference()->addJob(pid, this, false);
-//            return;
-//        }
-//    }
     } else {
         // parent
         smash.getJobsReference()->removeFinishedJobs();
@@ -1296,7 +1266,5 @@ void CopyCommand::execute() {
             smash.getJobsReference()->updateLastStoppedJobId();
             smash.setFgPid(0);
         }
-
-
     }
 }
