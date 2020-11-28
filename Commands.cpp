@@ -373,9 +373,7 @@ void ListDirectoryFilesCommand::execute() {
         perror("scandir");
     else {
         for (i = 0; i < n; i++) {
-            //if (strcmp(namelist[i]->d_name, ".") != 0 && strcmp(namelist[i]->d_name, "..") != 0) {
-                fileList.push_back(namelist[i]->d_name);
-            //}
+            fileList.push_back(namelist[i]->d_name);
         }
     }
     free(namelist);
@@ -696,9 +694,14 @@ void ForegroundCommand::execute() {
         jobID = smash.getJobs().getCurrentMaxJobId();
     } else {
         // check if there exit such an ID at the map
+        if (!Utils::isInteger(arguments[0])) {
+            cout << "smash error: fg: invalid arguments" << endl;
+            return;
+        }
         int inputJobId = stoi(arguments[0]);
+        smash.getJobsReference()->removeFinishedJobs();
         if (smash.getJobs().getJobsMap().find(inputJobId) == smash.getJobs().getJobsMap().end()) {
-            // there is no such jobID :(
+            // there is no such jobID
             cout << "smash error: fg: job-id " << arguments[0] << " does not exist" << endl;
             return;
         }
@@ -782,6 +785,7 @@ void QuitCommand::execute() {
     // need to ignore if there were too many args
     if (!arguments.empty() && arguments[0] == "kill") {
         // we need to delete all the jobs from the job list
+        smash.getJobsReference()->removeFinishedJobs();
         cout << "smash: sending SIGKILL signal to " << smash.getJobs().getJobsMap().size() << " jobs:" << endl;
         for (auto it = smash.getJobs().getJobsMap().begin(); it != smash.getJobs().getJobsMap().end(); it++) {
             int jobPid = it->second.getPid();
@@ -970,14 +974,20 @@ TimeoutCommand::TimeoutCommand(const char *cmd_line, bool isBackground) : BuiltI
 
 void TimeoutCommand::execute() {
     vector<string> brokenCommand = Utils::stringToWords(commandLine);
-    if (arguments.size() < 2) {
-        std::cout << "smash error: invalid argument" << std::endl;
+    if (arguments.empty() || arguments.size() < 2) {
+        std::cout << "smash error: timeout: invalid arguments" << std::endl;
+        return;
     }
     int duration = 0;
     if (!Utils::isInteger(arguments[0])) {
         cout << "smash error: timeout: invalid arguments" << endl;
+        return;
     } else {
         duration = std::atoi(arguments[0].c_str());
+        if (duration < 0) {
+            cout << "smash error: timeout: invalid arguments" << endl;
+            return;
+        }
     }
     string realCommandString = "";
     for (int i = 1; i < arguments.size(); ++i) {
@@ -1012,12 +1022,6 @@ void TimeoutCommand::execute() {
         // parent (and also the real timeout command)
         smash.getJobsReference()->removeFinishedJobs();
         int nJobId = smash.getJobsReference()->addJob(pid, this, false);
-//        if (smash.getAlarmsReference()->getMaxId() == 0) {
-//            // there are currently no alarms running, can safely set alarm
-//            alarm(duration);
-//        }
-//        // If there are other alarms already running, then we will only save the alarm duration in our map, and when the alarm
-//        // handler is called we will see which is the next alarm that needs to be scheduled
         int len = strlen(commandLine) + 1;
         char *cmd = (char *) malloc(len);
         strcpy(cmd, commandLine);
