@@ -373,9 +373,9 @@ void ListDirectoryFilesCommand::execute() {
         perror("scandir");
     else {
         for (i = 0; i < n; i++) {
-            if (strcmp(namelist[i]->d_name, ".") != 0 && strcmp(namelist[i]->d_name, "..") != 0) {
+            //if (strcmp(namelist[i]->d_name, ".") != 0 && strcmp(namelist[i]->d_name, "..") != 0) {
                 fileList.push_back(namelist[i]->d_name);
-            }
+            //}
         }
     }
     free(namelist);

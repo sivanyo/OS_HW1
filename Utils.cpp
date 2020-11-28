@@ -5,6 +5,7 @@
 #include <iostream>
 #include <string.h>
 #include <unistd.h>
+#include <algorithm>
 #include "Utils.h"
 
 using std::cout;
@@ -256,5 +257,7 @@ string Utils::removeBackgroundSignFromSecondCommand(const string &s) {
             result.push_back(i);
         }
     }
+    result.erase(std::find_if(result.rbegin(), result.rend(), std::bind1st(std::not_equal_to<char>(), ' ')).base(), result.end());
+
     return result;
 }
