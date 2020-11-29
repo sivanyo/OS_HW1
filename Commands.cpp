@@ -646,7 +646,7 @@ void BackgroundCommand::execute() {
             string cmdLine = smash.getJobs().getJobsMap().find(jobID)->second.getCommandLine();
             int pid = smash.getJobs().getJobsMap().find(jobID)->second.getPid();
             Utils::printCommandLineFromJob(cmdLine, pid);
-            if (kill(pid, SIGCONT) == -1) {
+            if (killpg(pid, SIGCONT) == -1) {
                 // syscall failed
                 perror("smash error: kill failed");
                 return;
@@ -714,7 +714,7 @@ void ForegroundCommand::execute() {
     cout << cmdLine << " : " << jobPid << endl;
     smash.getJobs().getJobsMap().find(jobID)->second.setBackground(false);
     smash.setFgPid(jobPid);
-    if (kill(jobPid, SIGCONT) == -1) {
+    if (killpg(jobPid, SIGCONT) == -1) {
         perror("smash error: kill failed");
         return;
     }
@@ -765,7 +765,7 @@ void KillCommand::execute() {
     }
     int realSignNum = abs(signumArg);
     int jobPid = smash.getJobs().getJobsMap().find(jobId)->second.getPid();
-    if (kill(jobPid, realSignNum) == -1) {
+    if (killpg(jobPid, realSignNum) == -1) {
         perror("smash error: kill failed");
         return;
     } else if (realSignNum == 9) {
@@ -803,7 +803,8 @@ void QuitCommand::execute() {
 }
 
 
-RedirectionCommand::RedirectionCommand(const char *cmd_line, bool append, bool background) : Command(cmd_line), append(append) {
+RedirectionCommand::RedirectionCommand(const char *cmd_line, bool append, bool background) : Command(cmd_line),
+                                                                                             append(append) {
     this->background = background;
 }
 
@@ -912,6 +913,7 @@ void PipeCommand::execute() {
         perror("smash error: fork failed");
         return;
     } else if (pid1 == 0) {
+        setpgrp();
         if (dup2(mypipe[1], channel) == -1) {
             perror("smash error: dup2 failed");
             return;
@@ -1044,9 +1046,13 @@ void TimeoutCommand::execute() {
     }
 }
 
-AlarmList::AlarmEntry::AlarmEntry(int id, int jobId, int realPid, int alarmDuration, char *originalCommand) : id(id), jobId(jobId), realPid(realPid),
-                                                                                                              originalAlarmDuration(alarmDuration),
-                                                                                                              originalCommand(originalCommand) {
+AlarmList::AlarmEntry::AlarmEntry(int id, int jobId, int realPid, int alarmDuration, char *originalCommand) : id(id),
+                                                                                                              jobId(jobId),
+                                                                                                              realPid(realPid),
+                                                                                                              originalAlarmDuration(
+                                                                                                                      alarmDuration),
+                                                                                                              originalCommand(
+                                                                                                                      originalCommand) {
     arriveTime = time(nullptr);
     if (arriveTime == -1) {
         // TODO: maybe fix in case of failure
@@ -1184,6 +1190,7 @@ void CopyCommand::execute() {
 
     if (pid == 0) {
         setpgrp();
+        bool complete = false;
         // child
         // Returns the complete path of the source file (will expand relative path to absolute)
         char *temp_src = realpath(arguments[0].c_str(), nullptr);
@@ -1193,9 +1200,9 @@ void CopyCommand::execute() {
         }
 
         // Getting source file size
-        ifstream in_file(arguments[0].c_str(), ios::binary);
-        in_file.seekg(0, ios::end);
-        int fileSize = in_file.tellg();
+//        ifstream in_file(arguments[0].c_str(), ios::binary);
+//        in_file.seekg(0, ios::end);
+//        int fileSize = in_file.tellg();
 
         // Getting file descriptor for source file
         int srcFd = open(arguments[0].c_str(), O_RDONLY);
@@ -1228,21 +1235,31 @@ void CopyCommand::execute() {
             }
             return;
         }
-        while (fileSize > 0) {
-            char buff[BUFFER];
-            int readNum = read(srcFd, buff, BUFFER);
-            if (readNum <= 0) {
-                perror("smash error: read failed");
-                return;
-            }
-            int writeNum = write(destFd, buff, readNum);
-            if (writeNum <= 0) {
-                perror("smash error: write failed");
-                return;
-            }
-            // Decrementing actually written bytes from the total size left
-            fileSize -= BUFFER;
+//        while (fileSize > 0) {
+//            char buff[BUFFER];
+//            int readNum = read(srcFd, buff, BUFFER);
+//            if (readNum <= 0) {
+//                perror("smash error: read failed");
+//                return;
+//            }
+//            int writeNum = write(destFd, buff, readNum);
+//            if (writeNum <= 0) {
+//                perror("smash error: write failed");
+//                return;
+//            }
+//            // Decrementing actually written bytes from the total size left
+//            fileSize -= BUFFER;
+//        }
+        std::ifstream file(arguments[0].c_str(), std::ifstream::binary);
+        char buff[BUFFER];
+
+        while (read(srcFd, buff, 1) > 0 && !file.eof()) {
+            write(destFd, buff, 1);
         }
+
+//        while (read(srcFd, buff, 1) > 0) {
+//            write(destFd, buff, 1);
+//        }
         if (!this->isBackground()) {
             std::cout << "smash: " << arguments[0] << " was copied to " << arguments[1] << endl;
         }
@@ -1268,3 +1285,4 @@ void CopyCommand::execute() {
         }
     }
 }
+

@@ -247,6 +247,8 @@ vector<string> Utils::splitAccordingToPipeErr(const string &s) {
             i = i + 1;
         }
     }
+    //esult.erase(std::find_if(result.rbegin(), result.rend(), std::bind1st(std::not_equal_to<char>(), ' ')).base(), result.end());
+
     return result;
 }
 

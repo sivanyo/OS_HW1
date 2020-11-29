@@ -36,7 +36,7 @@ void ctrlCHandler(int sig_num) {
         //int procPid = smash.getJobs().getJobsMap().find(jobId)->second.getPid();
         int jobID = smash.getJobsReference()->getJobIdByProcessId(fgPid);
         //int result = kill(procPid, SIGINT);
-        int result = kill(fgPid, SIGINT);
+        int result = killpg(fgPid, SIGINT);
         if (result == -1) {
             perror("smash error: kill failed");
             return;
@@ -72,7 +72,7 @@ void alarmHandler(int sig_num) {
             smash.getAlarmsReference()->updateMaxAlarmId();
         } else {
             // The real command did not finish processing, meaning it has now timed out and needs to be killed
-            int result = kill(pid, SIGINT);
+            int result = killpg(pid, SIGINT);
             if (result == -1) {
                 perror("smash error: kill failed");
                 return;
