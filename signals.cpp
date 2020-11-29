@@ -36,7 +36,7 @@ void ctrlCHandler(int sig_num) {
         //int procPid = smash.getJobs().getJobsMap().find(jobId)->second.getPid();
         int jobID = smash.getJobsReference()->getJobIdByProcessId(fgPid);
         //int result = kill(procPid, SIGINT);
-        int result = killpg(fgPid, SIGINT);
+        int result = killpg(fgPid, SIGKILL);
         if (result == -1) {
             perror("smash error: kill failed");
             return;

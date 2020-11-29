@@ -464,6 +464,15 @@ int JobsList::getMaxKeyInMap() {
 void JobsList::removeFinishedJobs() {
     int childPid;
     int status;
+//    for (auto it = jobsMap.begin(); it != jobsMap.end(); ++it) {
+//        CopyCommand* test = dynamic_cast<CopyCommand*>(it->second.getCommand());
+//        if (test != nullptr) {
+//            if (test->getFinish()) {
+//                // This is a background copy job that has finished, need to remove it.
+//                removeJobById(it->first);
+//            }
+//        }
+//    }
     childPid = waitpid(-1, &status, WNOHANG);
     while (childPid > 0) {
         int jobId = getJobIdByProcessId(childPid);
@@ -562,7 +571,7 @@ void JobsList::JobEntry::setStopped(bool stopped) const {
 }
 
 bool JobsList::JobEntry::isStopped() const {
-    command->isStopped();
+    return command->isStopped();
 }
 
 JobsCommand::JobsCommand(const char *cmd_line, JobsList *jobs) : BuiltInCommand(cmd_line), jobs(jobs) {
@@ -765,7 +774,7 @@ void KillCommand::execute() {
     }
     int realSignNum = abs(signumArg);
     int jobPid = smash.getJobs().getJobsMap().find(jobId)->second.getPid();
-    if (killpg(jobPid, realSignNum) == -1) {
+    if (kill(jobPid, realSignNum) == -1) {
         perror("smash error: kill failed");
         return;
     } else if (realSignNum == 9) {
@@ -1182,6 +1191,7 @@ void CopyCommand::execute() {
         std::cout << "smash error: invalid arguments" << endl;
         return;
     }
+    arguments[1] = Utils::removeBackgroundSignFromSecondCommand(arguments[1]);
     int pid = fork();
     if (pid == -1) {
         perror("smash error : fork failed");
@@ -1256,19 +1266,39 @@ void CopyCommand::execute() {
         while (read(srcFd, buff, 1) > 0 && !file.eof()) {
             write(destFd, buff, 1);
         }
-
+        exit(0);
 //        while (read(srcFd, buff, 1) > 0) {
 //            write(destFd, buff, 1);
 //        }
-        if (!this->isBackground()) {
-            std::cout << "smash: " << arguments[0] << " was copied to " << arguments[1] << endl;
-        }
-        srcFd = close(srcFd);
-        destFd = close(destFd);
-        if (srcFd == -1 || destFd == -1) {
-            perror("smash error: close failed");
-        }
-        return;
+//        if (!this->isBackground()) {
+//            std::cout << "smash: " << arguments[0] << " was copied to " << arguments[1] << endl;
+//        }
+//        srcFd = close(srcFd);
+//        destFd = close(destFd);
+//        if (srcFd == -1 || destFd == -1) {
+//            perror("smash error: close failed");
+//        }
+//        return;
+//        setpgrp();
+//        char *argv[81] = {0};
+//        char *data[81] = {0};
+//        _parseCommandLine(commandLine, argv);
+//        int new_fdt = open(argv[1], O_RDONLY, 0666);
+//        int new_fdt2 = open(argv[2], O_RDWR | O_CREAT | O_TRUNC, 0666);
+//        if (new_fdt == -1 || new_fdt2 == -1) {
+//            perror("smash error: open failed");
+//        }
+//        while (read(new_fdt, data, 1) > 0) {
+//            write(new_fdt2, data, 1);
+//        }
+//        this->setFinish(true);
+//        int cls1 = close(new_fdt);
+//        int cls2 = close(new_fdt2);
+//
+//        if (cls1 == -1 || cls2 == -1) {
+//            perror("smash error: close failed");
+//        }
+//        exit(0);
     } else {
         // parent
         smash.getJobsReference()->removeFinishedJobs();
@@ -1285,4 +1315,3 @@ void CopyCommand::execute() {
         }
     }
 }
-
