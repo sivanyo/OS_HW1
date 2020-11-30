@@ -8,10 +8,6 @@
 SmallShell &smash = SmallShell::getInstance();
 extern bool gotQuit;
 
-// TODO: remove this before sending
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "EndlessLoop"
-
 int main(int argc, char *argv[]) {
     if (signal(SIGTSTP, ctrlZHandler) == SIG_ERR) {
         perror("smash error: failed to set ctrl-Z handler");
@@ -37,5 +33,3 @@ int main(int argc, char *argv[]) {
     }
     return 0;
 }
-
-#pragma clang diagnostic pop

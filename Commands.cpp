@@ -250,7 +250,7 @@ Command::Command(const char *cmd_line) {
     commandLine = nCom;
     vector<string> split = Utils::stringToWords(commandLine);
     baseCommand = split[0];
-    for (int i = 1; i < split.size(); ++i) {
+    for (unsigned int i = 1; i < split.size(); ++i) {
         arguments.push_back(split[i]);
     }
 }
@@ -1003,7 +1003,7 @@ void TimeoutCommand::execute() {
         }
     }
     string realCommandString = "";
-    for (int i = 1; i < arguments.size(); ++i) {
+    for (unsigned int i = 1; i < arguments.size(); ++i) {
         if (realCommandString.empty()) {
             realCommandString.append(arguments[i]);
         } else {
@@ -1200,7 +1200,6 @@ void CopyCommand::execute() {
 
     if (pid == 0) {
         setpgrp();
-        bool complete = false;
         // child
         // Returns the complete path of the source file (will expand relative path to absolute)
         char *temp_src = realpath(arguments[0].c_str(), nullptr);

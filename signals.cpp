@@ -34,7 +34,6 @@ void ctrlCHandler(int sig_num) {
     //if (jobId != 0) {
     if (fgPid != 0) {
         //int procPid = smash.getJobs().getJobsMap().find(jobId)->second.getPid();
-        int jobID = smash.getJobsReference()->getJobIdByProcessId(fgPid);
         //int result = kill(procPid, SIGINT);
         int result = killpg(fgPid, SIGKILL);
         if (result == -1) {

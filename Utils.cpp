@@ -127,7 +127,7 @@ vector<string> Utils::getBreakedCmdRedirection(const string &s, const string &s1
     bool after = false;
     string cmd1 = "";
     string cmd2 = "";
-    for (int i = 0; i < sentence.size(); i++) {
+    for (unsigned int i = 0; i < sentence.size(); i++) {
         if (sentence[i] == s1 || sentence[i] == s2) {
             after = true;
             continue;
@@ -156,7 +156,7 @@ vector<string> Utils::getBreakedCmdRedirection(const string &s, const string &s1
 vector<string> Utils::splitAccordingToRedirect(const string &s) {
     vector<string> result = {"", ""};
     bool start2nd = false;
-    for (int i = 0; i < s.size(); ++i) {
+    for (unsigned int i = 0; i < s.size(); ++i) {
         if (s[i] != '>') {
             if (start2nd == false) {
                 result[0].push_back(s[i]);
@@ -180,7 +180,7 @@ vector<string> Utils::splitAccordingToRedirect(const string &s) {
 vector<string> Utils::splitAccordingToAppend(const string &s) {
     vector<string> result = {"", ""};
     bool start2nd = false;
-    for (int i = 0; i < s.size(); ++i) {
+    for (unsigned int i = 0; i < s.size(); ++i) {
         if (s[i] != '>') {
             if (start2nd == false) {
                 result[0].push_back(s[i]);
@@ -205,7 +205,7 @@ vector<string> Utils::splitAccordingToAppend(const string &s) {
 vector<string> Utils::splitAccordingToPipe(const string &s) {
     vector<string> result = {"", ""};
     bool start2nd = false;
-    for (int i = 0; i < s.size(); ++i) {
+    for (unsigned int i = 0; i < s.size(); ++i) {
         if (s[i] != '|') {
             if (start2nd == false) {
                 result[0].push_back(s[i]);
@@ -229,7 +229,7 @@ vector<string> Utils::splitAccordingToPipe(const string &s) {
 vector<string> Utils::splitAccordingToPipeErr(const string &s) {
     vector<string> result = {"", ""};
     bool start2nd = false;
-    for (int i = 0; i < s.size(); ++i) {
+    for (unsigned int i = 0; i < s.size(); ++i) {
         if (s[i] != '|') {
             if (start2nd == false) {
                 result[0].push_back(s[i]);
